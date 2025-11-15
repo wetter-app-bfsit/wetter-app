@@ -10,19 +10,19 @@ class AppState {
     this.currentCoordinates = null;
     this.weatherData = {
       openMeteo: null,
-      brightSky: null
+      brightSky: null,
     };
     this.isDarkMode = this._loadThemePreference();
     this.favorites = this._loadFavorites();
     this.units = {
       temperature: UI_CONFIG.TEMPERATURE_UNIT,
-      wind: UI_CONFIG.WIND_UNIT
+      wind: UI_CONFIG.WIND_UNIT,
     };
   }
 
   _loadThemePreference() {
     try {
-      return localStorage.getItem('wetter_dark_mode') === 'true';
+      return localStorage.getItem("wetter_dark_mode") === "true";
     } catch (e) {
       return false;
     }
@@ -30,7 +30,7 @@ class AppState {
 
   _loadFavorites() {
     try {
-      return JSON.parse(localStorage.getItem('wetter_favorites')) || [];
+      return JSON.parse(localStorage.getItem("wetter_favorites")) || [];
     } catch (e) {
       return [];
     }
@@ -38,59 +38,109 @@ class AppState {
 
   saveFavorite(city, coords) {
     const favorite = { city, coords, addedAt: Date.now() };
-    
+
     // Prüfe ob schon vorhanden
-    const exists = this.favorites.some(f => f.city.toLowerCase() === city.toLowerCase());
+    const exists = this.favorites.some(
+      (f) => f.city.toLowerCase() === city.toLowerCase()
+    );
     if (!exists) {
       this.favorites.push(favorite);
       try {
-        localStorage.setItem('wetter_favorites', JSON.stringify(this.favorites));
+        localStorage.setItem(
+          "wetter_favorites",
+          JSON.stringify(this.favorites)
+        );
         // Log analytics
         if (window.logAnalyticsEvent) {
-          window.logAnalyticsEvent('favorite_action', { action: 'add', city, timestamp: Date.now() });
+          window.logAnalyticsEvent("favorite_action", {
+            action: "add",
+            city,
+            timestamp: Date.now(),
+          });
         }
       } catch (e) {
-        console.warn('Fehler beim Speichern von Favoriten:', e);
+        console.warn("Fehler beim Speichern von Favoriten:", e);
       }
     }
   }
 
   removeFavorite(city) {
-    this.favorites = this.favorites.filter(f => f.city.toLowerCase() !== city.toLowerCase());
+    this.favorites = this.favorites.filter(
+      (f) => f.city.toLowerCase() !== city.toLowerCase()
+    );
     try {
-      localStorage.setItem('wetter_favorites', JSON.stringify(this.favorites));
+      localStorage.setItem("wetter_favorites", JSON.stringify(this.favorites));
       // Log analytics
       if (window.logAnalyticsEvent) {
-        window.logAnalyticsEvent('favorite_action', { action: 'remove', city, timestamp: Date.now() });
+        window.logAnalyticsEvent("favorite_action", {
+          action: "remove",
+          city,
+          timestamp: Date.now(),
+        });
       }
     } catch (e) {
-      console.warn('Fehler beim Löschen von Favoriten:', e);
+      console.warn("Fehler beim Löschen von Favoriten:", e);
     }
   }
 
   isFavorite(city) {
-    return this.favorites.some(f => f.city.toLowerCase() === city.toLowerCase());
+    return this.favorites.some(
+      (f) => f.city.toLowerCase() === city.toLowerCase()
+    );
   }
 
   moveFavorite(fromIndex, toIndex) {
     if (fromIndex === toIndex) return;
-    if (fromIndex < 0 || toIndex < 0 || fromIndex >= this.favorites.length || toIndex > this.favorites.length) return;
+    if (
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= this.favorites.length ||
+      toIndex > this.favorites.length
+    )
+      return;
     const item = this.favorites.splice(fromIndex, 1)[0];
     this.favorites.splice(toIndex, 0, item);
     try {
-      localStorage.setItem('wetter_favorites', JSON.stringify(this.favorites));
+      localStorage.setItem("wetter_favorites", JSON.stringify(this.favorites));
     } catch (e) {
-      console.warn('Fehler beim Speichern der Favoriten-Reihenfolge:', e);
+      console.warn("Fehler beim Speichern der Favoriten-Reihenfolge:", e);
     }
   }
 }
+
+const API_PROVIDERS = [
+  { id: "open-meteo", name: "Open-Meteo", tag: "Hauptquelle" },
+  { id: "brightsky", name: "BrightSky", tag: "Hauptquelle" },
+  {
+    id: "openweathermap",
+    name: "OpenWeatherMap",
+    tag: "Optional",
+    requiresKey: true,
+    key: "openweathermap",
+  },
+  {
+    id: "visualcrossing",
+    name: "VisualCrossing",
+    tag: "Optional",
+    requiresKey: true,
+    key: "visualcrossing",
+  },
+  {
+    id: "meteostat",
+    name: "Meteostat",
+    tag: "Historisch",
+    requiresKey: true,
+    key: "meteostat",
+    note: "Für historische Trenddaten",
+  },
+];
 
 /**
  * Einfaches HTML-Escape (für Sicherheitszwecke beim Erzeugen von innerHTML vermeiden wir es,
  * stattdessen erzeugen wir DOM-Elemente in `renderFavorites`).
  */
 function escapeHtml(str) {
-  const d = document.createElement('div');
+  const d = document.createElement("div");
   d.textContent = String(str);
   return d.innerHTML;
 }
@@ -99,71 +149,74 @@ function escapeHtml(str) {
  * Rendert die Favoriten-Liste in der UI
  */
 function renderFavorites() {
-  const container = document.querySelector('.favorites-list');
+  const container = document.querySelector(".favorites-list");
   if (!container || !window.appState) return;
 
   // Leere Container
-  container.innerHTML = '';
+  container.innerHTML = "";
 
   const favs = appState.favorites || [];
   if (!favs.length) {
-    const p = document.createElement('p');
-    p.className = 'no-favorites';
-    p.textContent = '⭐ Noch keine Favoriten. Favorit hinzufügen über das Stern-Symbol.';
+    const p = document.createElement("p");
+    p.className = "no-favorites";
+    p.textContent =
+      "⭐ Noch keine Favoriten. Favorit hinzufügen über das Stern-Symbol.";
     container.appendChild(p);
     return;
   }
 
-  favs.forEach(f => {
-    const item = document.createElement('div');
-    item.className = 'favorite-item';
+  favs.forEach((f) => {
+    const item = document.createElement("div");
+    item.className = "favorite-item";
     item.dataset.city = f.city;
     item.draggable = true;
 
-    item.addEventListener('dragstart', (ev) => {
-      ev.dataTransfer.setData('text/plain', f.city);
-      item.classList.add('dragging');
+    item.addEventListener("dragstart", (ev) => {
+      ev.dataTransfer.setData("text/plain", f.city);
+      item.classList.add("dragging");
     });
 
-    item.addEventListener('dragend', () => {
-      item.classList.remove('dragging');
+    item.addEventListener("dragend", () => {
+      item.classList.remove("dragging");
     });
 
-    item.addEventListener('dragover', (ev) => {
+    item.addEventListener("dragover", (ev) => {
       ev.preventDefault();
-      item.classList.add('dragover');
+      item.classList.add("dragover");
     });
 
-    item.addEventListener('dragleave', () => {
-      item.classList.remove('dragover');
+    item.addEventListener("dragleave", () => {
+      item.classList.remove("dragover");
     });
 
-    item.addEventListener('drop', (ev) => {
+    item.addEventListener("drop", (ev) => {
       ev.preventDefault();
-      const cityDragged = ev.dataTransfer.getData('text/plain');
-      const fromIndex = appState.favorites.findIndex(x => x.city === cityDragged);
-      const toIndex = appState.favorites.findIndex(x => x.city === f.city);
+      const cityDragged = ev.dataTransfer.getData("text/plain");
+      const fromIndex = appState.favorites.findIndex(
+        (x) => x.city === cityDragged
+      );
+      const toIndex = appState.favorites.findIndex((x) => x.city === f.city);
       if (fromIndex >= 0 && toIndex >= 0) {
         appState.moveFavorite(fromIndex, toIndex);
         renderFavorites();
       }
     });
 
-    const nameBtn = document.createElement('button');
-    nameBtn.className = 'fav-name btn-small';
-    nameBtn.type = 'button';
+    const nameBtn = document.createElement("button");
+    nameBtn.className = "fav-name btn-small";
+    nameBtn.type = "button";
     nameBtn.textContent = f.city;
-    nameBtn.addEventListener('click', () => {
+    nameBtn.addEventListener("click", () => {
       loadWeather(f.city);
     });
 
-    const removeBtn = document.createElement('button');
-    removeBtn.className = 'favorite-remove btn-remove';
-    removeBtn.type = 'button';
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "favorite-remove btn-remove";
+    removeBtn.type = "button";
     removeBtn.dataset.city = f.city;
-    removeBtn.title = 'Favorit entfernen';
-    removeBtn.textContent = '✕';
-    removeBtn.addEventListener('click', (e) => {
+    removeBtn.title = "Favorit entfernen";
+    removeBtn.textContent = "✕";
+    removeBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       // Keep a copy for undo
       const removedFav = Object.assign({}, f);
@@ -183,27 +236,163 @@ function renderFavorites() {
   });
 }
 
+let apiStatusStore = [];
+
+function initializeApiStatusDefaults() {
+  const hasManager = typeof window !== "undefined" && window.apiKeyManager;
+  apiStatusStore = API_PROVIDERS.map((provider) => {
+    const hasKey = provider.key
+      ? hasManager && window.apiKeyManager.hasKey(provider.key)
+      : true;
+    const state = provider.requiresKey && !hasKey ? "missing-key" : "pending";
+    const message =
+      provider.requiresKey && !hasKey
+        ? "API-Key erforderlich"
+        : provider.note || "Noch nicht geladen";
+    return {
+      id: provider.id,
+      name: provider.name,
+      tag: provider.tag,
+      state,
+      message,
+    };
+  });
+  renderApiStatusPanel();
+}
+
+function updateApiStatusStore(updates = []) {
+  if (!Array.isArray(updates)) return;
+  updates.forEach((update) => {
+    if (!update || !update.id) return;
+    const idx = apiStatusStore.findIndex((entry) => entry.id === update.id);
+    if (idx >= 0) {
+      apiStatusStore[idx] = { ...apiStatusStore[idx], ...update };
+    } else {
+      apiStatusStore.push(update);
+    }
+  });
+  renderApiStatusPanel();
+}
+
+function renderApiStatusPanel() {
+  const container = document.getElementById("api-status");
+  if (!container) return;
+
+  if (!apiStatusStore.length) {
+    container.innerHTML =
+      '<p class="api-status-empty">Noch keine Daten geladen</p>';
+    return;
+  }
+
+  const iconFor = (state) => {
+    switch (state) {
+      case "online":
+        return "✅";
+      case "error":
+        return "❌";
+      case "skipped":
+        return "🚫";
+      case "missing-key":
+        return "🔑";
+      case "warning":
+        return "⚠️";
+      default:
+        return "⏳";
+    }
+  };
+
+  const html = apiStatusStore
+    .map((entry) => {
+      const icon = iconFor(entry.state);
+      const duration =
+        typeof entry.duration === "number" ? `${entry.duration}ms` : "";
+      const cacheFlag = entry.fromCache ? "Cache" : "";
+      const meta = [duration, cacheFlag].filter(Boolean).join(" · ");
+      const detail = entry.detail ? escapeHtml(entry.detail) : "";
+      return `
+      <div class="api-status-item status-${entry.state || "pending"}">
+        <div class="api-status-row">
+          <span class="api-status-name">${icon} ${escapeHtml(
+        entry.name || ""
+      )}</span>
+          ${
+            entry.tag
+              ? `<span class="api-status-tag">${escapeHtml(entry.tag)}</span>`
+              : ""
+          }
+        </div>
+        <div class="api-status-message">${escapeHtml(entry.message || "")}</div>
+        ${meta ? `<div class="api-status-meta">${meta}</div>` : ""}
+        ${detail ? `<small class="api-status-extra">${detail}</small>` : ""}
+      </div>
+    `;
+    })
+    .join("");
+
+  container.innerHTML = html;
+}
+
+function buildApiStatusMessage(source) {
+  if (!source) return "";
+  if (source.skipped) {
+    return source.error ? `${source.error}` : "Übersprungen";
+  }
+  if (source.success) {
+    const parts = [];
+    parts.push(source.fromCache ? "Cache" : "Live");
+    if (typeof source.duration === "number") {
+      parts.push(`${source.duration}ms`);
+    }
+    return parts.join(" · ");
+  }
+  return source.error || "Fehler";
+}
+
+function syncProviderKeyState(providerId) {
+  const provider = API_PROVIDERS.find((p) => p.id === providerId);
+  if (!provider) return;
+  const hasManager = typeof window !== "undefined" && window.apiKeyManager;
+  const hasKey = provider.key
+    ? hasManager && window.apiKeyManager.hasKey(provider.key)
+    : true;
+  const payload = {
+    id: provider.id,
+    name: provider.name,
+    tag: provider.tag,
+  };
+
+  if (provider.requiresKey && !hasKey) {
+    payload.state = "missing-key";
+    payload.message = "API-Key erforderlich";
+  } else {
+    payload.state = "pending";
+    payload.message = provider.note || "Bereit – Key gespeichert";
+  }
+
+  updateApiStatusStore([payload]);
+}
+
 /**
  * Build render-ready data from raw API results and apply unit conversions.
  * Returns an object with formatted arrays ready for the UI (hourly/daily per source).
  */
 function buildRenderData(rawData, units) {
   const result = { openMeteo: null, brightSky: null };
-  
+
   // Helper: compute feels-like temperature (apparent temperature)
   // Uses simple formula combining temperature (°C), relative humidity (%) and wind (m/s)
   // Returns value in °C or null if insufficient data
   function computeFeelsLike(tC, humidity, wind_mps) {
-    if (typeof tC !== 'number') return null;
-    const RH = (typeof humidity === 'number') ? humidity : null;
-    const W = (typeof wind_mps === 'number') ? wind_mps : 0;
+    if (typeof tC !== "number") return null;
+    const RH = typeof humidity === "number" ? humidity : null;
+    const W = typeof wind_mps === "number" ? wind_mps : 0;
     // Approximate vapor pressure (hPa)
     let e = 0;
     if (RH !== null) {
-      e = RH / 100 * 6.105 * Math.exp(17.27 * tC / (237.7 + tC));
+      e = (RH / 100) * 6.105 * Math.exp((17.27 * tC) / (237.7 + tC));
     }
     // Apparent temperature (Steadman-like): T + 0.33*e - 0.70*wind - 4.00
-    const at = tC + 0.33 * e - 0.70 * W - 4.0;
+    const at = tC + 0.33 * e - 0.7 * W - 4.0;
     return Math.round(at * 10) / 10;
   }
   try {
@@ -212,34 +401,61 @@ function buildRenderData(rawData, units) {
       const daily = openMeteoAPI.formatDailyData(rawData.openMeteo, 7);
 
       // Convert temps and wind per units
-      const convertedHourly = hourly.map(h => {
-        const tC = (typeof h.temperature === 'number') ? h.temperature : null; // °C
+      const convertedHourly = hourly.map((h) => {
+        const tC = typeof h.temperature === "number" ? h.temperature : null; // °C
         // Open-Meteo provides windspeed_10m in km/h -> convert to m/s for internal calc
-        const rawWind = (typeof h.windSpeed === 'number') ? h.windSpeed : null; // likely km/h
-        const wind_mps = rawWind === null ? null : (rawWind / 3.6);
-        const temp = tC === null ? null : (units.temperature === 'F' ? (tC * 9/5 + 32) : tC);
+        const rawWind = typeof h.windSpeed === "number" ? h.windSpeed : null; // likely km/h
+        const wind_mps = rawWind === null ? null : rawWind / 3.6;
+        const temp =
+          tC === null
+            ? null
+            : units.temperature === "F"
+            ? (tC * 9) / 5 + 32
+            : tC;
         // Wind conversion: m/s -> km/h (multiply by 3.6) or m/s -> mph (multiply by 2.237)
         let wind = null;
         if (wind_mps !== null) {
-          if (units.wind === 'm/s') {
+          if (units.wind === "m/s") {
             wind = wind_mps;
-          } else if (units.wind === 'mph') {
+          } else if (units.wind === "mph") {
             wind = wind_mps * 2.237; // 1 m/s = 2.237 mph
           } else {
             wind = wind_mps * 3.6; // Default: km/h
           }
         }
         // compute feels-like in °C using internal values, then convert if needed
-        const feelsC = (tC === null) ? null : computeFeelsLike(tC, h.humidity ?? null, wind_mps);
-        const feels = feelsC === null ? null : (units.temperature === 'F' ? (feelsC * 9/5 + 32) : feelsC);
-        return Object.assign({}, h, { temperature: temp, windSpeed: wind, feelsLike: feels });
+        const feelsC =
+          tC === null
+            ? null
+            : computeFeelsLike(tC, h.humidity ?? null, wind_mps);
+        const feels =
+          feelsC === null
+            ? null
+            : units.temperature === "F"
+            ? (feelsC * 9) / 5 + 32
+            : feelsC;
+        return Object.assign({}, h, {
+          temperature: temp,
+          windSpeed: wind,
+          feelsLike: feels,
+        });
       });
 
-      const convertedDaily = daily.map(d => {
-        const max = (typeof d.tempMax === 'number') ? d.tempMax : null;
-        const min = (typeof d.tempMin === 'number') ? d.tempMin : null;
-        const tMax = max === null ? null : (units.temperature === 'F' ? (max * 9/5 + 32) : max);
-        const tMin = min === null ? null : (units.temperature === 'F' ? (min * 9/5 + 32) : min);
+      const convertedDaily = daily.map((d) => {
+        const max = typeof d.tempMax === "number" ? d.tempMax : null;
+        const min = typeof d.tempMin === "number" ? d.tempMin : null;
+        const tMax =
+          max === null
+            ? null
+            : units.temperature === "F"
+            ? (max * 9) / 5 + 32
+            : max;
+        const tMin =
+          min === null
+            ? null
+            : units.temperature === "F"
+            ? (min * 9) / 5 + 32
+            : min;
         return Object.assign({}, d, { tempMax: tMax, tempMin: tMin });
       });
 
@@ -247,10 +463,10 @@ function buildRenderData(rawData, units) {
       // Group hourly into days for 7-day view (first 3 days will include per-hour slices)
       function groupHourlyByDay(hourlyArray, maxDays = 7) {
         const map = new Map();
-        hourlyArray.forEach(h => {
+        hourlyArray.forEach((h) => {
           try {
             const d = new Date(h.time);
-            const dateKey = d.toISOString().split('T')[0];
+            const dateKey = d.toISOString().split("T")[0];
             if (!map.has(dateKey)) map.set(dateKey, []);
             map.get(dateKey).push(h);
           } catch (e) {
@@ -258,7 +474,10 @@ function buildRenderData(rawData, units) {
           }
         });
         // Convert map to array and limit to maxDays
-        const arr = Array.from(map.entries()).map(([date, hours]) => ({ date, hours }));
+        const arr = Array.from(map.entries()).map(([date, hours]) => ({
+          date,
+          hours,
+        }));
         return arr.slice(0, maxDays);
       }
       result.openMeteo.byDay = groupHourlyByDay(convertedHourly, 7);
@@ -266,29 +485,50 @@ function buildRenderData(rawData, units) {
 
     if (rawData.brightSky) {
       const bs = brightSkyAPI.formatWeatherData(rawData.brightSky, 48);
-      const converted = bs.map(h => {
-        const tC = (typeof h.temperature === 'number') ? h.temperature : null; // assume °C
-        const wind_mps = (typeof h.windSpeed === 'number') ? h.windSpeed : null; // assume m/s
-        const temp = tC === null ? null : (units.temperature === 'F' ? (tC * 9/5 + 32) : tC);
+      const converted = bs.map((h) => {
+        const tC = typeof h.temperature === "number" ? h.temperature : null; // assume °C
+        const wind_mps = typeof h.windSpeed === "number" ? h.windSpeed : null; // assume m/s
+        const temp =
+          tC === null
+            ? null
+            : units.temperature === "F"
+            ? (tC * 9) / 5 + 32
+            : tC;
         // Wind conversion: m/s -> km/h or m/s -> mph
         let wind = null;
         if (wind_mps !== null) {
-          if (units.wind === 'm/s') {
+          if (units.wind === "m/s") {
             wind = wind_mps;
-          } else if (units.wind === 'mph') {
+          } else if (units.wind === "mph") {
             wind = wind_mps * 2.237; // 1 m/s = 2.237 mph
           } else {
             wind = wind_mps * 3.6; // Default: km/h
           }
         }
-        const feelsC = (tC === null) ? null : computeFeelsLike(tC, h.relativeHumidity ?? h.humidity ?? null, wind_mps);
-        const feels = feelsC === null ? null : (units.temperature === 'F' ? (feelsC * 9/5 + 32) : feelsC);
-        return Object.assign({}, h, { temperature: temp, windSpeed: wind, feelsLike: feels });
+        const feelsC =
+          tC === null
+            ? null
+            : computeFeelsLike(
+                tC,
+                h.relativeHumidity ?? h.humidity ?? null,
+                wind_mps
+              );
+        const feels =
+          feelsC === null
+            ? null
+            : units.temperature === "F"
+            ? (feelsC * 9) / 5 + 32
+            : feelsC;
+        return Object.assign({}, h, {
+          temperature: temp,
+          windSpeed: wind,
+          feelsLike: feels,
+        });
       });
       result.brightSky = { hourly: converted };
     }
   } catch (e) {
-    console.warn('buildRenderData failed', e);
+    console.warn("buildRenderData failed", e);
   }
   return result;
 }
@@ -299,22 +539,28 @@ function buildRenderData(rawData, units) {
 function renderFromRenderData() {
   try {
     if (!appState || !appState.renderData) return;
-    const city = appState.currentCity || '';
+    const city = appState.currentCity || "";
     // display current (uses renderData format)
     weatherDisplay.displayCurrent(appState.renderData, city);
 
     // hourly and forecast for OpenMeteo
     if (appState.renderData.openMeteo) {
-      weatherDisplay.displayHourly(appState.renderData.openMeteo.hourly, 'Open-Meteo');
+      weatherDisplay.displayHourly(
+        appState.renderData.openMeteo.hourly,
+        "Open-Meteo"
+      );
       weatherDisplay.displayForecast(appState.renderData.openMeteo.daily);
     }
 
     // brightSky hourly (if present)
     if (appState.renderData.brightSky) {
-      weatherDisplay.displayHourly(appState.renderData.brightSky.hourly, 'BrightSky');
+      weatherDisplay.displayHourly(
+        appState.renderData.brightSky.hourly,
+        "BrightSky"
+      );
     }
   } catch (e) {
-    console.warn('renderFromRenderData failed', e);
+    console.warn("renderFromRenderData failed", e);
   }
 }
 
@@ -324,7 +570,7 @@ function renderFromRenderData() {
 async function searchLocation(city) {
   try {
     console.log(`🔍 Suche Ort: ${city}`);
-    
+
     const validation = validateCityInput(city);
     if (!validation.valid) {
       throw new Error(validation.error);
@@ -334,14 +580,18 @@ async function searchLocation(city) {
       format: API_ENDPOINTS.NOMINATIM.PARAMS.format,
       q: sanitizeInput(city),
       limit: API_ENDPOINTS.NOMINATIM.PARAMS.limit,
-      addressdetails: API_ENDPOINTS.NOMINATIM.PARAMS.addressdetails
+      addressdetails: API_ENDPOINTS.NOMINATIM.PARAMS.addressdetails,
     });
 
     const url = `${API_ENDPOINTS.NOMINATIM.BASE}?${params.toString()}`;
-    const response = await safeApiFetch(url, {}, API_ENDPOINTS.NOMINATIM.TIMEOUT);
+    const response = await safeApiFetch(
+      url,
+      {},
+      API_ENDPOINTS.NOMINATIM.TIMEOUT
+    );
     const geoData = await response.json();
 
-    const validation2 = validateApiResponse(geoData, 'nominatim');
+    const validation2 = validateApiResponse(geoData, "nominatim");
     if (!validation2.valid) {
       throw new Error(validation2.error);
     }
@@ -352,10 +602,10 @@ async function searchLocation(city) {
       city: geoData[0].display_name,
       lat: parseFloat(geoData[0].lat),
       lon: parseFloat(geoData[0].lon),
-      results: geoData
+      results: geoData,
     };
   } catch (error) {
-    console.error('❌ Ortssuche fehlgeschlagen:', error.message);
+    console.error("❌ Ortssuche fehlgeschlagen:", error.message);
     throw error;
   }
 }
@@ -365,43 +615,46 @@ async function searchLocation(city) {
  */
 async function fetchWeatherData(lat, lon) {
   const sources = [];
-  
+
   console.log(`🌡️ Lade Wetterdaten für ${lat}, ${lon}`);
 
-  // Versuche Open-Meteo (Hauptquelle)
-  const openMeteoResult = await openMeteoAPI.fetchWeather(lat, lon);
-  
+  const [openMeteoResult, brightSkyResult] = await Promise.all([
+    openMeteoAPI.fetchWeather(lat, lon),
+    brightSkyAPI.fetchWeather(lat, lon),
+  ]);
+
   if (!openMeteoResult.error) {
     sources.push({
-      name: 'Open-Meteo',
+      id: "open-meteo",
+      name: "Open-Meteo",
       success: true,
       duration: openMeteoResult.duration,
-      fromCache: openMeteoResult.fromCache
+      fromCache: openMeteoResult.fromCache,
     });
   } else {
     sources.push({
-      name: 'Open-Meteo',
+      id: "open-meteo",
+      name: "Open-Meteo",
       success: false,
-      error: openMeteoResult.error
+      error: openMeteoResult.error,
     });
     showWarning(`Open-Meteo: ${openMeteoResult.error}`);
   }
 
-  // Versuche BrightSky (Zusatzquelle)
-  const brightSkyResult = await brightSkyAPI.fetchWeather(lat, lon);
-  
   if (!brightSkyResult.error) {
     sources.push({
-      name: 'BrightSky',
+      id: "brightsky",
+      name: "BrightSky",
       success: true,
       duration: brightSkyResult.duration,
-      fromCache: brightSkyResult.fromCache
+      fromCache: brightSkyResult.fromCache,
     });
   } else {
     sources.push({
-      name: 'BrightSky',
+      id: "brightsky",
+      name: "BrightSky",
       success: false,
-      error: brightSkyResult.error
+      error: brightSkyResult.error,
     });
     showWarning(`BrightSky: ${brightSkyResult.error}`);
   }
@@ -411,71 +664,112 @@ async function fetchWeatherData(lat, lon) {
   let visualCrossingResult = null;
 
   // OpenWeatherMap (optional)
-  if (window.apiKeyManager && window.apiKeyManager.hasKey('openweathermap')) {
+  if (window.apiKeyManager && window.apiKeyManager.hasKey("openweathermap")) {
     try {
       const owmAPI = new OpenWeatherMapAPI();
-      const owmKey = window.apiKeyManager.getKey('openweathermap');
+      const owmKey = window.apiKeyManager.getKey("openweathermap");
       openWeatherMapResult = await owmAPI.fetchWeather(lat, lon, owmKey);
-      
+
       if (!openWeatherMapResult.error) {
         sources.push({
-          name: 'OpenWeatherMap',
+          id: "openweathermap",
+          name: "OpenWeatherMap",
           success: true,
           duration: openWeatherMapResult.duration || 0,
-          fromCache: false
+          fromCache: false,
         });
-        console.log('✅ OpenWeatherMap Daten geladen');
+        console.log("✅ OpenWeatherMap Daten geladen");
       } else {
         sources.push({
-          name: 'OpenWeatherMap',
+          id: "openweathermap",
+          name: "OpenWeatherMap",
           success: false,
-          error: openWeatherMapResult.error
+          error: openWeatherMapResult.error,
         });
+        showWarning(`OpenWeatherMap: ${openWeatherMapResult.error}`);
       }
     } catch (e) {
-      console.warn('OpenWeatherMap Fehler:', e.message);
+      console.warn("OpenWeatherMap Fehler:", e.message);
+      sources.push({
+        id: "openweathermap",
+        name: "OpenWeatherMap",
+        success: false,
+        error: e.message || "Unbekannter Fehler",
+      });
     }
   }
 
   // VisualCrossing (optional)
-  if (window.apiKeyManager && window.apiKeyManager.hasKey('visualcrossing')) {
+  if (window.apiKeyManager && window.apiKeyManager.hasKey("visualcrossing")) {
     try {
       const vcAPI = new VisualCrossingAPI();
-      const vcKey = window.apiKeyManager.getKey('visualcrossing');
+      const vcKey = window.apiKeyManager.getKey("visualcrossing");
       visualCrossingResult = await vcAPI.fetchWeather(lat, lon, vcKey);
-      
+
       if (!visualCrossingResult.error) {
         sources.push({
-          name: 'VisualCrossing',
+          id: "visualcrossing",
+          name: "VisualCrossing",
           success: true,
           duration: visualCrossingResult.duration || 0,
-          fromCache: false
+          fromCache: false,
         });
-        console.log('✅ VisualCrossing Daten geladen');
+        console.log("✅ VisualCrossing Daten geladen");
       } else {
         sources.push({
-          name: 'VisualCrossing',
+          id: "visualcrossing",
+          name: "VisualCrossing",
           success: false,
-          error: visualCrossingResult.error
+          error: visualCrossingResult.error,
         });
+        showWarning(`VisualCrossing: ${visualCrossingResult.error}`);
       }
     } catch (e) {
-      console.warn('VisualCrossing Fehler:', e.message);
+      console.warn("VisualCrossing Fehler:", e.message);
+      sources.push({
+        id: "visualcrossing",
+        name: "VisualCrossing",
+        success: false,
+        error: e.message || "Unbekannter Fehler",
+      });
     }
   }
 
+  if (sources.length) {
+    const statusPayload = sources
+      .filter((src) => src.id)
+      .map((src) => ({
+        id: src.id,
+        name: src.name,
+        state: src.skipped ? "skipped" : src.success ? "online" : "error",
+        message: buildApiStatusMessage(src),
+        duration: src.duration,
+        fromCache: src.fromCache,
+        detail: !src.success && src.error ? src.error : "",
+      }));
+    updateApiStatusStore(statusPayload);
+  }
+
   // Prüfe ob mindestens eine Hauptquelle erfolgreich war
-  const hasMainData = [openMeteoResult, brightSkyResult].some(r => !r.error);
+  const hasMainData = [openMeteoResult, brightSkyResult].some((r) => !r.error);
   if (!hasMainData) {
-    throw new Error('Keine Wetterdaten verfügbar - Hauptquellen fehlgeschlagen');
+    throw new Error(
+      "Keine Wetterdaten verfügbar - Hauptquellen fehlgeschlagen"
+    );
   }
 
   return {
     openMeteo: openMeteoResult.error ? null : openMeteoResult.data,
     brightSky: brightSkyResult.error ? null : brightSkyResult.data,
-    openWeatherMap: openWeatherMapResult && !openWeatherMapResult.error ? openWeatherMapResult.data : null,
-    visualCrossing: visualCrossingResult && !visualCrossingResult.error ? visualCrossingResult.data : null,
-    sources
+    openWeatherMap:
+      openWeatherMapResult && !openWeatherMapResult.error
+        ? openWeatherMapResult.data
+        : null,
+    visualCrossing:
+      visualCrossingResult && !visualCrossingResult.error
+        ? visualCrossingResult.data
+        : null,
+    sources,
   };
 }
 
@@ -491,9 +785,11 @@ function displayWeatherResults(location, weatherData) {
   // Update detailed comparison view (if available)
   try {
     // Pass converted renderData if available (appState.renderData set by caller)
-    weatherDisplay.showSourcesComparison(appState?.renderData?.openMeteo ? appState.renderData.openMeteo : null,
-                                          appState?.renderData?.brightSky ? appState.renderData.brightSky : null,
-                                          sources);
+    weatherDisplay.showSourcesComparison(
+      appState?.renderData?.openMeteo ? appState.renderData.openMeteo : null,
+      appState?.renderData?.brightSky ? appState.renderData.brightSky : null,
+      sources
+    );
   } catch (e) {
     // ignore
   }
@@ -502,8 +798,11 @@ function displayWeatherResults(location, weatherData) {
   if (openMeteo) {
     // Prefer renderData (converted & feels-like included) if available
     const rd = appState?.renderData?.openMeteo?.hourly;
-    const hourlyData = rd && rd.length ? rd.slice(0,24) : openMeteoAPI.formatHourlyData(openMeteo, 24);
-    weatherDisplay.displayHourly(hourlyData, 'Open-Meteo');
+    const hourlyData =
+      rd && rd.length
+        ? rd.slice(0, 24)
+        : openMeteoAPI.formatHourlyData(openMeteo, 24);
+    weatherDisplay.displayHourly(hourlyData, "Open-Meteo");
 
     // Zeige aktuellen Wert (uses converted renderData when present)
     if (hourlyData.length > 0) {
@@ -513,7 +812,7 @@ function displayWeatherResults(location, weatherData) {
         humidity: hourlyData[0].humidity,
         feelsLike: hourlyData[0].feelsLike ?? hourlyData[0].feels_like,
         emoji: hourlyData[0].emoji,
-        description: hourlyData[0].description || ''
+        description: hourlyData[0].description || "",
       });
     }
 
@@ -525,7 +824,7 @@ function displayWeatherResults(location, weatherData) {
   // Zeige BrightSky Daten als Alternative
   if (brightSky) {
     const formattedData = brightSkyAPI.formatWeatherData(brightSky, 24);
-    console.log('BrightSky Daten verfügbar:', formattedData.length);
+    console.log("BrightSky Daten verfügbar:", formattedData.length);
   }
 }
 
@@ -536,7 +835,7 @@ async function loadWeather(city) {
   try {
     // Log analytics
     if (window.logAnalyticsEvent) {
-      window.logAnalyticsEvent('search', { city, timestamp: Date.now() });
+      window.logAnalyticsEvent("search", { city, timestamp: Date.now() });
     }
 
     // Zeige Loading-State
@@ -551,17 +850,25 @@ async function loadWeather(city) {
 
     // Lade Wetterdaten
     const weatherData = await fetchWeatherData(location.lat, location.lon);
-    
+
     // Log API call
     if (window.logAnalyticsEvent) {
-      window.logAnalyticsEvent('api_call', { city: location.city, timestamp: Date.now() });
+      window.logAnalyticsEvent("api_call", {
+        city: location.city,
+        timestamp: Date.now(),
+      });
     }
 
     // Speichere WeatherData im globalen State und bereite renderbare Daten vor
     try {
       appState.weatherData = weatherData;
-      appState.renderData = buildRenderData(weatherData, appState.units || { temperature: 'C', wind: 'km/h' });
-    } catch (e) { /* ignore */ }
+      appState.renderData = buildRenderData(
+        weatherData,
+        appState.units || { temperature: "C", wind: "km/h" }
+      );
+    } catch (e) {
+      /* ignore */
+    }
 
     // Zeige Ergebnisse (verwende die konvertierten renderData für Anzeige)
     try {
@@ -576,12 +883,12 @@ async function loadWeather(city) {
     weatherCache.setGeo(city, {
       city: location.city,
       lat: location.lat,
-      lon: location.lon
+      lon: location.lon,
     });
 
     showSuccess(`✅ Wetter für ${location.city} geladen`);
   } catch (error) {
-    console.error('❌ Fehler beim Laden:', error);
+    console.error("❌ Fehler beim Laden:", error);
     weatherDisplay.showError(error.message);
     errorHandler.showWithRetry(error.message, () => loadWeather(city));
   } finally {
@@ -594,17 +901,17 @@ async function loadWeather(city) {
  */
 function toggleDarkMode() {
   appState.isDarkMode = !appState.isDarkMode;
-  document.body.classList.toggle('dark-mode', appState.isDarkMode);
-  
+  document.body.classList.toggle("dark-mode", appState.isDarkMode);
+
   try {
-    localStorage.setItem('wetter_dark_mode', appState.isDarkMode);
+    localStorage.setItem("wetter_dark_mode", appState.isDarkMode);
   } catch (e) {
-    console.warn('Fehler beim Speichern des Themes:', e);
+    console.warn("Fehler beim Speichern des Themes:", e);
   }
 
-  const btn = document.getElementById('modeToggle');
+  const btn = document.getElementById("modeToggle");
   if (btn) {
-    btn.textContent = appState.isDarkMode ? '☀️ Light Mode' : '🌙 Dark Mode';
+    btn.textContent = appState.isDarkMode ? "☀️ Light Mode" : "🌙 Dark Mode";
   }
 }
 
@@ -612,23 +919,36 @@ function toggleDarkMode() {
  * Initialisierung
  */
 function initApp() {
-  console.log('🚀 Initialisiere Wetter-App...');
+  console.log("🚀 Initialisiere Wetter-App...");
 
   // Initialisiere API Key Manager
   window.apiKeyManager = new APIKeyManager();
-  
+
   // Setze Default API-Keys (falls noch nicht vorhanden)
   window.apiKeyManager.setDefaults({
-    openweathermap: '22889ea71f66faab6196bde649dd04a9',
-    visualcrossing: 'JVCZ3WAHB5XBT7GXQC7RQBGBE',
-    meteostat: 'edda72c60bmsh4a38c4687147239p14e8d5jsn6f578346b68a'
+    openweathermap: "22889ea71f66faab6196bde649dd04a9",
+    visualcrossing: "JVCZ3WAHB5XBT7GXQC7RQBGBE",
+    meteostat: "edda72c60bmsh4a38c4687147239p14e8d5jsn6f578346b68a",
   });
 
+  initializeApiStatusDefaults();
+  window.updateApiStatusEntry = (providerId, payload = {}) => {
+    if (!providerId) return;
+    updateApiStatusStore([{ id: providerId, ...payload }]);
+  };
+
   // Initialisiere Components
-  initErrorHandler('#error-container');
-  
-  searchComponent = new SearchInputComponent('#cityInput', '#searchBtn', '#recent-cities');
-  weatherDisplay = new WeatherDisplayComponent('current-weather', 'forecast-container');
+  initErrorHandler("#error-container");
+
+  searchComponent = new SearchInputComponent(
+    "#cityInput",
+    "#searchBtn",
+    "#recent-cities"
+  );
+  weatherDisplay = new WeatherDisplayComponent(
+    "current-weather",
+    "forecast-container"
+  );
 
   // Globale State
   appState = new AppState();
@@ -637,180 +957,204 @@ function initApp() {
   try {
     renderFavorites();
   } catch (e) {
-    console.warn('Favoriten rendern fehlgeschlagen:', e);
+    console.warn("Favoriten rendern fehlgeschlagen:", e);
   }
 
   // Event-Listener
-  window.addEventListener('search', (e) => {
+  window.addEventListener("search", (e) => {
     loadWeather(e.detail.city);
   });
 
-  document.getElementById('modeToggle')?.addEventListener('click', toggleDarkMode);
+  document
+    .getElementById("modeToggle")
+    ?.addEventListener("click", toggleDarkMode);
 
   // Settings Button - Toggle Modal
-  const settingsBtn = document.getElementById('settingsBtn');
-  const settingsModal = document.getElementById('settings-modal');
-  const modalOverlay = document.getElementById('modal-overlay');
-  
+  const settingsBtn = document.getElementById("settingsBtn");
+  const settingsModal = document.getElementById("settings-modal");
+  const modalOverlay = document.getElementById("modal-overlay");
+
   if (settingsBtn && settingsModal) {
-    settingsBtn.addEventListener('click', () => {
-      settingsModal.classList.add('active');
-      settingsModal.setAttribute('aria-hidden', 'false');
-      modalOverlay.classList.add('active');
-      document.body.style.overflow = 'hidden';
+    settingsBtn.addEventListener("click", () => {
+      settingsModal.classList.add("active");
+      settingsModal.setAttribute("aria-hidden", "false");
+      modalOverlay.classList.add("active");
+      document.body.style.overflow = "hidden";
     });
   }
 
   // Modal Close Handlers
-  const closeModalBtns = document.querySelectorAll('.modal-close');
-  closeModalBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
+  const closeModalBtns = document.querySelectorAll(".modal-close");
+  closeModalBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
       const modalId = btn.dataset.close;
       const modal = document.getElementById(modalId);
       if (modal) {
-        modal.classList.remove('active');
-        modal.setAttribute('aria-hidden', 'true');
-        modalOverlay.classList.remove('active');
-        document.body.style.overflow = '';
+        modal.classList.remove("active");
+        modal.setAttribute("aria-hidden", "true");
+        modalOverlay.classList.remove("active");
+        document.body.style.overflow = "";
       }
     });
   });
 
   // Close modal on overlay click
   if (modalOverlay) {
-    modalOverlay.addEventListener('click', () => {
-      document.querySelectorAll('.modal.active').forEach(modal => {
-        modal.classList.remove('active');
-        modal.setAttribute('aria-hidden', 'true');
+    modalOverlay.addEventListener("click", () => {
+      document.querySelectorAll(".modal.active").forEach((modal) => {
+        modal.classList.remove("active");
+        modal.setAttribute("aria-hidden", "true");
       });
-      modalOverlay.classList.remove('active');
-      document.body.style.overflow = '';
+      modalOverlay.classList.remove("active");
+      document.body.style.overflow = "";
     });
   }
 
   // Initialize Feature Modules (Maps, Alerts, Historical, Analytics)
-  const weatherMap = new WeatherMap('weather-map');
-  const weatherAlerts = new WeatherAlerts('weather-alerts');
-  const historicalChart = new HistoricalChart('historical-chart');
+  const weatherMap = new WeatherMap("weather-map");
+  const weatherAlerts = new WeatherAlerts("weather-alerts");
+  const historicalChart = new HistoricalChart("historical-chart");
   const analytics = new Analytics();
-  
+
   // Log analytics events
   window.logAnalyticsEvent = (type, data) => analytics.logEvent(type, data);
 
   // Tab Switching for Extra Features
-  const tabButtons = document.querySelectorAll('.tab-btn');
-  const tabContents = document.querySelectorAll('.tab-content');
-  
-  tabButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
+  const tabButtons = document.querySelectorAll(".tab-btn");
+  const tabContents = document.querySelectorAll(".tab-content");
+
+  tabButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
       const tabName = btn.dataset.tab;
-      
+
       // Remove active from all
-      tabButtons.forEach(b => b.classList.remove('active'));
-      tabContents.forEach(c => {
-        c.classList.remove('active');
-        c.style.display = 'none';
+      tabButtons.forEach((b) => b.classList.remove("active"));
+      tabContents.forEach((c) => {
+        c.classList.remove("active");
+        c.style.display = "none";
       });
-      
+
       // Add active to clicked
-      btn.classList.add('active');
-      const targetContent = document.querySelector(`[data-tab-content="${tabName}"]`);
+      btn.classList.add("active");
+      const targetContent = document.querySelector(
+        `[data-tab-content="${tabName}"]`
+      );
       if (targetContent) {
-        targetContent.classList.add('active');
-        targetContent.style.display = 'block';
+        targetContent.classList.add("active");
+        targetContent.style.display = "block";
 
         // Initialize features on first tab switch
-        if (tabName === 'maps' && appState.currentCoordinates) {
+        if (tabName === "maps" && appState.currentCoordinates) {
           weatherMap.init(
-            appState.currentCoordinates.lat, 
-            appState.currentCoordinates.lng, 
-            appState.currentCity || 'Standort'
+            appState.currentCoordinates.lat,
+            appState.currentCoordinates.lng,
+            appState.currentCity || "Standort"
           );
-        } else if (tabName === 'alerts' && appState.currentCoordinates) {
+        } else if (tabName === "alerts" && appState.currentCoordinates) {
           weatherAlerts.fetchAlerts(
             appState.currentCoordinates.lat,
             appState.currentCoordinates.lng,
-            appState.currentCity || 'Standort'
+            appState.currentCity || "Standort"
           );
-        } else if (tabName === 'historical' && appState.currentCoordinates) {
+        } else if (tabName === "historical" && appState.currentCoordinates) {
           historicalChart.fetchAndRender(
             appState.currentCoordinates.lat,
             appState.currentCoordinates.lng,
-            appState.currentCity || 'Standort'
+            appState.currentCity || "Standort"
           );
-        } else if (tabName === 'analytics') {
-          analytics.renderDashboard('analytics-dashboard');
+        } else if (tabName === "analytics") {
+          analytics.renderDashboard("analytics-dashboard");
         }
       }
     });
   });
 
   // Units selects initial state and handlers
-  const tempSelect = document.getElementById('temp-unit-select');
-  const windSelect = document.getElementById('wind-unit-select');
+  const tempSelect = document.getElementById("temp-unit-select");
+  const windSelect = document.getElementById("wind-unit-select");
   // Load persisted units if present
   try {
-    const savedTemp = localStorage.getItem('wetter_unit_temp');
-    const savedWind = localStorage.getItem('wetter_unit_wind');
+    const savedTemp = localStorage.getItem("wetter_unit_temp");
+    const savedWind = localStorage.getItem("wetter_unit_wind");
     if (savedTemp) appState.units.temperature = savedTemp;
     if (savedWind) appState.units.wind = savedWind;
-  } catch (e) { /* ignore */ }
+  } catch (e) {
+    /* ignore */
+  }
 
   if (tempSelect) {
     tempSelect.value = appState.units.temperature || tempSelect.value;
-    tempSelect.addEventListener('change', (e) => {
+    tempSelect.addEventListener("change", (e) => {
       appState.units.temperature = e.target.value;
-      try { localStorage.setItem('wetter_unit_temp', e.target.value); } catch (err) {}
+      try {
+        localStorage.setItem("wetter_unit_temp", e.target.value);
+      } catch (err) {}
       // Rebuild renderData and re-render
       try {
         if (appState.weatherData) {
-          appState.renderData = buildRenderData(appState.weatherData, appState.units);
+          appState.renderData = buildRenderData(
+            appState.weatherData,
+            appState.units
+          );
           renderFromRenderData();
         }
-      } catch (err) { console.warn('Unit change render failed', err); }
+      } catch (err) {
+        console.warn("Unit change render failed", err);
+      }
     });
   }
 
   if (windSelect) {
     windSelect.value = appState.units.wind || windSelect.value;
-    windSelect.addEventListener('change', (e) => {
+    windSelect.addEventListener("change", (e) => {
       appState.units.wind = e.target.value;
-      try { localStorage.setItem('wetter_unit_wind', e.target.value); } catch (err) {}
+      try {
+        localStorage.setItem("wetter_unit_wind", e.target.value);
+      } catch (err) {}
       try {
         if (appState.weatherData) {
-          appState.renderData = buildRenderData(appState.weatherData, appState.units);
+          appState.renderData = buildRenderData(
+            appState.weatherData,
+            appState.units
+          );
           renderFromRenderData();
         }
-      } catch (err) { console.warn('Unit change render failed', err); }
+      } catch (err) {
+        console.warn("Unit change render failed", err);
+      }
     });
   }
 
   // Setze initiales Theme
   if (appState.isDarkMode) {
-    document.body.classList.add('dark-mode');
+    document.body.classList.add("dark-mode");
   }
 
   // Favoriten Toggle: Delegierter Klick-Handler (für den Stern-Button im aktuellen View)
-  document.addEventListener('click', (e) => {
-    const favToggle = e.target.closest && e.target.closest('#favoriteToggle');
+  document.addEventListener("click", (e) => {
+    const favToggle = e.target.closest && e.target.closest("#favoriteToggle");
     if (favToggle) {
       const city = favToggle.dataset.city;
       if (!city) return;
 
       if (appState.isFavorite(city)) {
         appState.removeFavorite(city);
-        favToggle.textContent = '☆';
-        favToggle.title = 'Zu Favoriten hinzufügen';
+        favToggle.textContent = "☆";
+        favToggle.title = "Zu Favoriten hinzufügen";
         showInfo(`${city} aus Favoriten entfernt`);
       } else {
         appState.saveFavorite(city, appState.currentCoordinates || null);
-        favToggle.textContent = '⭐';
-        favToggle.title = 'Aus Favoriten entfernen';
+        favToggle.textContent = "⭐";
+        favToggle.title = "Aus Favoriten entfernen";
         showSuccess(`${city} zu Favoriten hinzugefügt`);
       }
 
       // Update Favoriten-Liste
-      try { renderFavorites(); } catch (err) { console.warn(err); }
+      try {
+        renderFavorites();
+      } catch (err) {
+        console.warn(err);
+      }
     }
   });
 
@@ -818,75 +1162,110 @@ function initApp() {
   setCacheInvalidation();
 
   // Push toggle handler (subscribe/unsubscribe)
-  const pushBtn = document.getElementById('pushToggle');
+  const pushBtn = document.getElementById("pushToggle");
   if (pushBtn) {
-    pushBtn.addEventListener('click', async () => {
+    pushBtn.addEventListener("click", async () => {
       try {
-        const enabled = localStorage.getItem('wetter_push_enabled') === 'true';
+        const enabled = localStorage.getItem("wetter_push_enabled") === "true";
         if (enabled) {
           await unsubscribeFromPush();
-          pushBtn.textContent = '🔔';
-          pushBtn.title = 'Push-Benachrichtigungen aktivieren';
-          showInfo('Push-Benachrichtigungen deaktiviert');
+          pushBtn.textContent = "🔔";
+          pushBtn.title = "Push-Benachrichtigungen aktivieren";
+          showInfo("Push-Benachrichtigungen deaktiviert");
         } else {
           const ok = await subscribeToPush();
           if (ok) {
-            pushBtn.textContent = '🔕';
-            pushBtn.title = 'Push-Benachrichtigungen deaktivieren';
-            showSuccess('Push-Benachrichtigungen aktiviert (Subscription gespeichert)');
+            pushBtn.textContent = "🔕";
+            pushBtn.title = "Push-Benachrichtigungen deaktivieren";
+            showSuccess(
+              "Push-Benachrichtigungen aktiviert (Subscription gespeichert)"
+            );
           }
         }
       } catch (e) {
-        console.warn('Push toggle error', e);
-        showWarning('Push konnte nicht umgeschaltet werden: '+(e && e.message));
+        console.warn("Push toggle error", e);
+        showWarning(
+          "Push konnte nicht umgeschaltet werden: " + (e && e.message)
+        );
       }
     });
   }
 
   // API Keys - Load existing keys into inputs
-  const owmKeyInput = document.getElementById('openweathermap-key');
-  const vcKeyInput = document.getElementById('visualcrossing-key');
-  if (owmKeyInput) owmKeyInput.value = window.apiKeyManager.getKey('openweathermap') || '';
-  if (vcKeyInput) vcKeyInput.value = window.apiKeyManager.getKey('visualcrossing') || '';
+  const owmKeyInput = document.getElementById("openweathermap-key");
+  const vcKeyInput = document.getElementById("visualcrossing-key");
+  const meteostatKeyInput = document.getElementById("meteostat-key");
+  if (owmKeyInput)
+    owmKeyInput.value = window.apiKeyManager.getKey("openweathermap") || "";
+  if (vcKeyInput)
+    vcKeyInput.value = window.apiKeyManager.getKey("visualcrossing") || "";
+  if (meteostatKeyInput)
+    meteostatKeyInput.value = window.apiKeyManager.getKey("meteostat") || "";
 
   // API Keys - Save handlers
   if (owmKeyInput) {
-    owmKeyInput.addEventListener('change', (e) => {
-      const success = window.apiKeyManager.setKey('openweathermap', e.target.value);
-      if (success) showSuccess('OpenWeatherMap API-Key gespeichert');
+    owmKeyInput.addEventListener("change", (e) => {
+      const success = window.apiKeyManager.setKey(
+        "openweathermap",
+        e.target.value
+      );
+      if (success) {
+        showSuccess("OpenWeatherMap API-Key gespeichert");
+        syncProviderKeyState("openweathermap");
+      }
     });
   }
   if (vcKeyInput) {
-    vcKeyInput.addEventListener('change', (e) => {
-      const success = window.apiKeyManager.setKey('visualcrossing', e.target.value);
-      if (success) showSuccess('VisualCrossing API-Key gespeichert');
+    vcKeyInput.addEventListener("change", (e) => {
+      const success = window.apiKeyManager.setKey(
+        "visualcrossing",
+        e.target.value
+      );
+      if (success) {
+        showSuccess("VisualCrossing API-Key gespeichert");
+        syncProviderKeyState("visualcrossing");
+      }
+    });
+  }
+  if (meteostatKeyInput) {
+    meteostatKeyInput.addEventListener("change", (e) => {
+      const success = window.apiKeyManager.setKey("meteostat", e.target.value);
+      if (success) {
+        showSuccess("Meteostat API-Key gespeichert");
+        syncProviderKeyState("meteostat");
+      }
     });
   }
 
   // VAPID Save button
-  const saveVapidBtn = document.getElementById('saveVapidBtn');
+  const saveVapidBtn = document.getElementById("saveVapidBtn");
   if (saveVapidBtn) {
-    saveVapidBtn.addEventListener('click', () => {
-      const v = document.getElementById('vapidKeyInput')?.value || '';
-      try { localStorage.setItem('wetter_vapid_public', v.trim()); showSuccess('VAPID key gespeichert.'); } catch (e) { showWarning('Konnte VAPID key nicht speichern'); }
+    saveVapidBtn.addEventListener("click", () => {
+      const v = document.getElementById("vapidKeyInput")?.value || "";
+      try {
+        localStorage.setItem("wetter_vapid_public", v.trim());
+        showSuccess("VAPID key gespeichert.");
+      } catch (e) {
+        showWarning("Konnte VAPID key nicht speichern");
+      }
     });
   }
 
   // Fetch VAPID from local server button
-  const fetchVapidBtn = document.getElementById('fetchVapidBtn');
+  const fetchVapidBtn = document.getElementById("fetchVapidBtn");
   if (fetchVapidBtn) {
-    fetchVapidBtn.addEventListener('click', async () => {
+    fetchVapidBtn.addEventListener("click", async () => {
       try {
         const key = await fetchVapidFromServer();
         if (key) {
-          document.getElementById('vapidKeyInput').value = key;
-          localStorage.setItem('wetter_vapid_public', key);
-          showSuccess('VAPID key vom lokalen Server geladen');
+          document.getElementById("vapidKeyInput").value = key;
+          localStorage.setItem("wetter_vapid_public", key);
+          showSuccess("VAPID key vom lokalen Server geladen");
         } else {
-          showWarning('Konnte VAPID key nicht vom lokalen Server laden');
+          showWarning("Konnte VAPID key nicht vom lokalen Server laden");
         }
       } catch (e) {
-        showWarning('Fehler beim Laden des VAPID keys: '+(e && e.message));
+        showWarning("Fehler beim Laden des VAPID keys: " + (e && e.message));
       }
     });
   }
@@ -894,23 +1273,23 @@ function initApp() {
   // AUTO-FETCH VAPID on app init (fixes push notification issue)
   (async () => {
     try {
-      const existingKey = localStorage.getItem('wetter_vapid_public');
+      const existingKey = localStorage.getItem("wetter_vapid_public");
       if (!existingKey || existingKey.length < 20) {
-        console.log('🔑 Lade VAPID Key automatisch vom Server...');
+        console.log("🔑 Lade VAPID Key automatisch vom Server...");
         const key = await fetchVapidFromServer();
         if (key) {
-          localStorage.setItem('wetter_vapid_public', key);
-          const vapidInput = document.getElementById('vapidKeyInput');
+          localStorage.setItem("wetter_vapid_public", key);
+          const vapidInput = document.getElementById("vapidKeyInput");
           if (vapidInput) vapidInput.value = key;
-          console.log('✅ VAPID Key automatisch geladen');
+          console.log("✅ VAPID Key automatisch geladen");
         }
       } else {
-        console.log('✅ VAPID Key bereits vorhanden');
-        const vapidInput = document.getElementById('vapidKeyInput');
+        console.log("✅ VAPID Key bereits vorhanden");
+        const vapidInput = document.getElementById("vapidKeyInput");
         if (vapidInput) vapidInput.value = existingKey;
       }
     } catch (e) {
-      console.warn('⚠️ VAPID Auto-Fetch fehlgeschlagen:', e.message);
+      console.warn("⚠️ VAPID Auto-Fetch fehlgeschlagen:", e.message);
     }
   })();
 
@@ -920,7 +1299,7 @@ function initApp() {
   // Expose a simple smoke-test callable from console
   window.runSmokeTest = runSmokeTest;
 
-  console.log('✅ App initialisiert');
+  console.log("✅ App initialisiert");
 }
 
 // Globale Komponenten-Instanzen
@@ -929,21 +1308,26 @@ let searchComponent;
 let weatherDisplay;
 
 // Starte App wenn DOM bereit
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initApp);
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initApp);
 } else {
   initApp();
 }
 
 // === Stundenanzeige mit Endlosschleife & sanftem Drag ===
-function renderHourly(containerId, times, temps, weatherCodes = [], useIcons = false) {
+function renderHourly(
+  containerId,
+  times,
+  temps,
+  weatherCodes = [],
+  useIcons = false
+) {
   const container = document.getElementById(containerId);
   if (!container) return;
   container.classList.add("hourly");
   container.innerHTML = `
   <div class="hourly-bg"></div>
 `;
-
 
   const baseCount = 24;
   const hours = times.slice(0, baseCount);
@@ -1007,31 +1391,48 @@ function renderHourly(containerId, times, temps, weatherCodes = [], useIcons = f
 async function runSmokeTest() {
   const results = [];
   try {
-    results.push({ok: !!window.searchComponent, msg: 'searchComponent vorhanden'});
-    results.push({ok: !!window.weatherDisplay, msg: 'weatherDisplay vorhanden'});
-    results.push({ok: !!window.appState, msg: 'appState vorhanden'});
+    results.push({
+      ok: !!window.searchComponent,
+      msg: "searchComponent vorhanden",
+    });
+    results.push({
+      ok: !!window.weatherDisplay,
+      msg: "weatherDisplay vorhanden",
+    });
+    results.push({ ok: !!window.appState, msg: "appState vorhanden" });
 
     // Versuch Favoriten zu rendern
     try {
       renderFavorites();
-      results.push({ok: true, msg: 'renderFavorites() erfolgreich ausgeführt'});
+      results.push({
+        ok: true,
+        msg: "renderFavorites() erfolgreich ausgeführt",
+      });
     } catch (e) {
-      results.push({ok: false, msg: 'renderFavorites() fehlgeschlagen: '+e.message});
+      results.push({
+        ok: false,
+        msg: "renderFavorites() fehlgeschlagen: " + e.message,
+      });
     }
 
     // Loading/empty view
     try {
       weatherDisplay.showEmpty();
-      results.push({ok: true, msg: 'weatherDisplay.showEmpty() OK'});
+      results.push({ ok: true, msg: "weatherDisplay.showEmpty() OK" });
     } catch (e) {
-      results.push({ok: false, msg: 'weatherDisplay.showEmpty() failed: '+e.message});
+      results.push({
+        ok: false,
+        msg: "weatherDisplay.showEmpty() failed: " + e.message,
+      });
     }
   } catch (err) {
-    results.push({ok:false, msg: 'Smoke test exception: '+err.message});
+    results.push({ ok: false, msg: "Smoke test exception: " + err.message });
   }
 
-  console.group('Smoke Test Results');
-  results.forEach(r => console[r.ok ? 'log' : 'error']((r.ok? 'PASS':'FAIL')+' - '+r.msg));
+  console.group("Smoke Test Results");
+  results.forEach((r) =>
+    console[r.ok ? "log" : "error"]((r.ok ? "PASS" : "FAIL") + " - " + r.msg)
+  );
   console.groupEnd();
   return results;
 }
@@ -1041,48 +1442,59 @@ async function runSmokeTest() {
  * Note: For production you should pass a VAPID public key (applicationServerKey).
  */
 async function subscribeToPush() {
-  if (!('serviceWorker' in navigator)) throw new Error('Service Worker nicht unterstützt');
+  if (!("serviceWorker" in navigator))
+    throw new Error("Service Worker nicht unterstützt");
   const reg = await navigator.serviceWorker.ready;
   try {
     // Versuche VAPID key aus localStorage oder Input zu lesen
-      let stored = (localStorage.getItem('wetter_vapid_public') || document.getElementById('vapidKeyInput')?.value || '').trim();
-      // If missing, attempt to fetch from local push-server /keys
-      if (!stored || stored.length < 20) {
-        try {
-          const fetched = await fetchVapidFromServer();
-          if (fetched) {
-            stored = fetched;
-            localStorage.setItem('wetter_vapid_public', stored);
-            showInfo('VAPID public key automatisch vom lokalen Push-Server geladen');
-          }
-        } catch (e) {
-          // ignore - handled below
+    let stored = (
+      localStorage.getItem("wetter_vapid_public") ||
+      document.getElementById("vapidKeyInput")?.value ||
+      ""
+    ).trim();
+    // If missing, attempt to fetch from local push-server /keys
+    if (!stored || stored.length < 20) {
+      try {
+        const fetched = await fetchVapidFromServer();
+        if (fetched) {
+          stored = fetched;
+          localStorage.setItem("wetter_vapid_public", stored);
+          showInfo(
+            "VAPID public key automatisch vom lokalen Push-Server geladen"
+          );
         }
-      }
-      if (!stored || stored.length < 20) {
-        throw new Error('Missing VAPID public key. Bitte füge in den Einstellungen deinen VAPID Public Key (Base64 URL-safe) ein oder starte den lokalen Push-Server und klicke "Fetch VAPID".');
-      }
-      const options = { userVisibleOnly: true };
-      try {
-        options.applicationServerKey = urlBase64ToUint8Array(stored);
       } catch (e) {
-        throw new Error('Ungültiges VAPID Key Format. Bitte überprüfe den Public Key.');
+        // ignore - handled below
       }
+    }
+    if (!stored || stored.length < 20) {
+      throw new Error(
+        'Missing VAPID public key. Bitte füge in den Einstellungen deinen VAPID Public Key (Base64 URL-safe) ein oder starte den lokalen Push-Server und klicke "Fetch VAPID".'
+      );
+    }
+    const options = { userVisibleOnly: true };
+    try {
+      options.applicationServerKey = urlBase64ToUint8Array(stored);
+    } catch (e) {
+      throw new Error(
+        "Ungültiges VAPID Key Format. Bitte überprüfe den Public Key."
+      );
+    }
 
-      const sub = await reg.pushManager.subscribe(options);
-      // try to send subscription to local push server if reachable
-      try {
-        await sendSubscriptionToServer(sub);
-        showSuccess('Push-Subscription an lokalen Server übermittelt');
-      } catch (e) {
-        console.warn('Could not send subscription to local server', e);
-      }
-      localStorage.setItem('wetter_push_subscription', JSON.stringify(sub));
-      localStorage.setItem('wetter_push_enabled', 'true');
-      console.log('Push Subscription:', sub);
-      return true;
+    const sub = await reg.pushManager.subscribe(options);
+    // try to send subscription to local push server if reachable
+    try {
+      await sendSubscriptionToServer(sub);
+      showSuccess("Push-Subscription an lokalen Server übermittelt");
+    } catch (e) {
+      console.warn("Could not send subscription to local server", e);
+    }
+    localStorage.setItem("wetter_push_subscription", JSON.stringify(sub));
+    localStorage.setItem("wetter_push_enabled", "true");
+    console.log("Push Subscription:", sub);
+    return true;
   } catch (err) {
-    console.warn('Push subscription failed', err);
+    console.warn("Push subscription failed", err);
     throw err;
   }
 }
@@ -1092,12 +1504,12 @@ async function subscribeToPush() {
  */
 async function fetchVapidFromServer() {
   try {
-    const res = await fetch('http://localhost:3030/keys');
-    if (!res.ok) throw new Error('Local push server not available');
+    const res = await fetch("http://localhost:3030/keys");
+    if (!res.ok) throw new Error("Local push server not available");
     const json = await res.json();
     return json.publicKey || null;
   } catch (e) {
-    console.warn('fetchVapidFromServer failed', e);
+    console.warn("fetchVapidFromServer failed", e);
     return null;
   }
 }
@@ -1107,15 +1519,15 @@ async function fetchVapidFromServer() {
  */
 async function sendSubscriptionToServer(subscription) {
   try {
-    const res = await fetch('http://localhost:3030/subscribe', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(subscription)
+    const res = await fetch("http://localhost:3030/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(subscription),
     });
-    if (!res.ok) throw new Error('Server returned ' + res.status);
+    if (!res.ok) throw new Error("Server returned " + res.status);
     return await res.json();
   } catch (e) {
-    console.warn('sendSubscriptionToServer failed', e);
+    console.warn("sendSubscriptionToServer failed", e);
     throw e;
   }
 }
@@ -1124,8 +1536,8 @@ async function sendSubscriptionToServer(subscription) {
  * Helper: converts a URL-safe base64 string to Uint8Array (for VAPID key)
  */
 function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
   const rawData = atob(base64);
   const outputArray = new Uint8Array(rawData.length);
   for (let i = 0; i < rawData.length; ++i) {
@@ -1135,14 +1547,15 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 async function unsubscribeFromPush() {
-  if (!('serviceWorker' in navigator)) throw new Error('Service Worker nicht unterstützt');
+  if (!("serviceWorker" in navigator))
+    throw new Error("Service Worker nicht unterstützt");
   const reg = await navigator.serviceWorker.ready;
   const subs = await reg.pushManager.getSubscription();
   if (subs) {
     await subs.unsubscribe();
   }
-  localStorage.removeItem('wetter_push_subscription');
-  localStorage.setItem('wetter_push_enabled', 'false');
+  localStorage.removeItem("wetter_push_subscription");
+  localStorage.setItem("wetter_push_enabled", "false");
   return true;
 }
 
@@ -1166,7 +1579,7 @@ function enableSmoothDragScroll(container) {
   const moveDrag = (pageX) => {
     if (!isDown) return;
     const x = pageX - container.offsetLeft;
-    const walk = (x - startX);
+    const walk = x - startX;
     container.scrollLeft = scrollLeft - walk;
   };
 
@@ -1176,7 +1589,9 @@ function enableSmoothDragScroll(container) {
   window.addEventListener("mouseup", endDrag);
 
   // Touch
-  container.addEventListener("touchstart", (e) => startDrag(e.touches[0].pageX));
+  container.addEventListener("touchstart", (e) =>
+    startDrag(e.touches[0].pageX)
+  );
   container.addEventListener("touchmove", (e) => moveDrag(e.touches[0].pageX));
   container.addEventListener("touchend", endDrag);
 }
@@ -1213,5 +1628,7 @@ document.getElementById("cityInput").addEventListener("keypress", (e) => {
 function toggleMode() {
   document.body.classList.toggle("dark-mode");
   const isDark = document.body.classList.contains("dark-mode");
-  document.getElementById("modeToggle").innerText = isDark ? "☀️ Light Mode" : "🌙 Dark Mode";
+  document.getElementById("modeToggle").innerText = isDark
+    ? "☀️ Light Mode"
+    : "🌙 Dark Mode";
 }

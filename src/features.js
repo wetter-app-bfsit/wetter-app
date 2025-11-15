@@ -25,30 +25,35 @@ class WeatherMap {
         this.map = null;
         this.marker = null;
       } catch (e) {
-        console.warn('Map cleanup warning:', e);
+        console.warn("Map cleanup warning:", e);
       }
     }
 
     // Clear container HTML to reset Leaflet state
-    container.innerHTML = '';
+    container.innerHTML = "";
 
     // Initialize Leaflet map
     try {
       this.map = L.map(this.containerId).setView([lat, lng], 10);
 
       // Add OSM tile layer
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        maxZoom: 18
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 18,
       }).addTo(this.map);
 
       // Add marker
       this.marker = L.marker([lat, lng]).addTo(this.map);
-      this.marker.bindPopup(`<b>${cityName}</b><br>Lat: ${lat.toFixed(2)}, Lng: ${lng.toFixed(2)}`).openPopup();
+      this.marker
+        .bindPopup(
+          `<b>${cityName}</b><br>Lat: ${lat.toFixed(2)}, Lng: ${lng.toFixed(2)}`
+        )
+        .openPopup();
 
-      console.log('✅ Map initialized:', cityName);
+      console.log("✅ Map initialized:", cityName);
     } catch (e) {
-      console.error('❌ Map initialization failed:', e);
+      console.error("❌ Map initialization failed:", e);
       container.innerHTML = `<p style="color: red; padding: 20px;">Karte konnte nicht geladen werden: ${e.message}</p>`;
     }
   }
@@ -60,13 +65,19 @@ class WeatherMap {
     }
 
     this.map.setView([lat, lng], 10);
-    
+
     if (this.marker) {
       this.marker.setLatLng([lat, lng]);
-      this.marker.setPopupContent(`<b>${cityName}</b><br>Lat: ${lat.toFixed(2)}, Lng: ${lng.toFixed(2)}`);
+      this.marker.setPopupContent(
+        `<b>${cityName}</b><br>Lat: ${lat.toFixed(2)}, Lng: ${lng.toFixed(2)}`
+      );
     } else {
       this.marker = L.marker([lat, lng]).addTo(this.map);
-      this.marker.bindPopup(`<b>${cityName}</b><br>Lat: ${lat.toFixed(2)}, Lng: ${lng.toFixed(2)}`).openPopup();
+      this.marker
+        .bindPopup(
+          `<b>${cityName}</b><br>Lat: ${lat.toFixed(2)}, Lng: ${lng.toFixed(2)}`
+        )
+        .openPopup();
     }
   }
 }
@@ -84,7 +95,8 @@ class WeatherAlerts {
     const container = document.getElementById(this.containerId);
     if (!container) return;
 
-    container.innerHTML = '<p style="padding: 20px; text-align: center;">🔄 Lade Wetterwarnungen...</p>';
+    container.innerHTML =
+      '<p style="padding: 20px; text-align: center;">🔄 Lade Wetterwarnungen...</p>';
 
     try {
       // Simulate MeteoAlarm data (in production, use real API)
@@ -93,14 +105,14 @@ class WeatherAlerts {
         `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weathercode,windspeed_10m&hourly=temperature_2m,weathercode&timezone=auto`
       );
 
-      if (!response.ok) throw new Error('API Fehler');
+      if (!response.ok) throw new Error("API Fehler");
 
       const data = await response.json();
       const alerts = this.analyzeWeatherData(data, city);
 
       this.renderAlerts(alerts, city);
     } catch (e) {
-      console.error('Alerts fetch error:', e);
+      console.error("Alerts fetch error:", e);
       container.innerHTML = `<p style="color: #666; padding: 20px; text-align: center;">⚠️ Keine Warnungen verfügbar (${e.message})</p>`;
     }
   }
@@ -113,38 +125,46 @@ class WeatherAlerts {
     // Check for extreme conditions
     if (current.windspeed_10m > 60) {
       alerts.push({
-        severity: 'red',
-        icon: '🌪️',
-        title: 'Sturmwarnung',
-        description: `Sehr starker Wind mit ${current.windspeed_10m.toFixed(0)} km/h erwartet.`,
-        time: new Date().toLocaleString('de-DE')
+        severity: "red",
+        icon: "🌪️",
+        title: "Sturmwarnung",
+        description: `Sehr starker Wind mit ${current.windspeed_10m.toFixed(
+          0
+        )} km/h erwartet.`,
+        time: new Date().toLocaleString("de-DE"),
       });
     } else if (current.windspeed_10m > 40) {
       alerts.push({
-        severity: 'orange',
-        icon: '💨',
-        title: 'Windwarnung',
-        description: `Starker Wind mit ${current.windspeed_10m.toFixed(0)} km/h.`,
-        time: new Date().toLocaleString('de-DE')
+        severity: "orange",
+        icon: "💨",
+        title: "Windwarnung",
+        description: `Starker Wind mit ${current.windspeed_10m.toFixed(
+          0
+        )} km/h.`,
+        time: new Date().toLocaleString("de-DE"),
       });
     }
 
     // Check temperature extremes
     if (current.temperature_2m > 35) {
       alerts.push({
-        severity: 'orange',
-        icon: '🔥',
-        title: 'Hitzewarnung',
-        description: `Sehr hohe Temperaturen (${current.temperature_2m.toFixed(1)}°C).`,
-        time: new Date().toLocaleString('de-DE')
+        severity: "orange",
+        icon: "🔥",
+        title: "Hitzewarnung",
+        description: `Sehr hohe Temperaturen (${current.temperature_2m.toFixed(
+          1
+        )}°C).`,
+        time: new Date().toLocaleString("de-DE"),
       });
     } else if (current.temperature_2m < -10) {
       alerts.push({
-        severity: 'orange',
-        icon: '❄️',
-        title: 'Kältewarnung',
-        description: `Sehr niedrige Temperaturen (${current.temperature_2m.toFixed(1)}°C).`,
-        time: new Date().toLocaleString('de-DE')
+        severity: "orange",
+        icon: "❄️",
+        title: "Kältewarnung",
+        description: `Sehr niedrige Temperaturen (${current.temperature_2m.toFixed(
+          1
+        )}°C).`,
+        time: new Date().toLocaleString("de-DE"),
       });
     }
 
@@ -152,19 +172,19 @@ class WeatherAlerts {
     const weathercode = current.weathercode;
     if ([95, 96, 99].includes(weathercode)) {
       alerts.push({
-        severity: 'red',
-        icon: '⛈️',
-        title: 'Gewitterwarnung',
-        description: 'Gewitter mit Starkregen möglich.',
-        time: new Date().toLocaleString('de-DE')
+        severity: "red",
+        icon: "⛈️",
+        title: "Gewitterwarnung",
+        description: "Gewitter mit Starkregen möglich.",
+        time: new Date().toLocaleString("de-DE"),
       });
     } else if ([82, 86].includes(weathercode)) {
       alerts.push({
-        severity: 'orange',
-        icon: '🌧️',
-        title: 'Starkregenwarnung',
-        description: 'Starker Regen erwartet.',
-        time: new Date().toLocaleString('de-DE')
+        severity: "orange",
+        icon: "🌧️",
+        title: "Starkregenwarnung",
+        description: "Starker Regen erwartet.",
+        time: new Date().toLocaleString("de-DE"),
       });
     }
 
@@ -174,7 +194,7 @@ class WeatherAlerts {
   renderAlerts(alerts, city) {
     const container = document.getElementById(this.containerId);
     if (!container) {
-      console.error('Alerts container not found:', this.containerId);
+      console.error("Alerts container not found:", this.containerId);
       return;
     }
 
@@ -186,16 +206,30 @@ class WeatherAlerts {
           <p style="margin: 0;">Für ${city} liegen derzeit keine Wetterwarnungen vor.</p>
         </div>
       `;
-      console.log('✅ No alerts for', city);
+      console.log("✅ No alerts for", city);
       return;
     }
 
-    const html = alerts.map(alert => `
+    const html = alerts
+      .map(
+        (alert) => `
       <div class="alert-card alert-${alert.severity}" style="
         padding: 16px;
         margin-bottom: 16px;
-        border-left: 4px solid ${alert.severity === 'red' ? '#dc3545' : alert.severity === 'orange' ? '#fd7e14' : '#ffc107'};
-        background: ${alert.severity === 'red' ? '#f8d7da' : alert.severity === 'orange' ? '#fff3cd' : '#d1ecf1'};
+        border-left: 4px solid ${
+          alert.severity === "red"
+            ? "#dc3545"
+            : alert.severity === "orange"
+            ? "#fd7e14"
+            : "#ffc107"
+        };
+        background: ${
+          alert.severity === "red"
+            ? "#f8d7da"
+            : alert.severity === "orange"
+            ? "#fff3cd"
+            : "#d1ecf1"
+        };
         border-radius: 8px;
       ">
         <div style="display: flex; align-items: flex-start; gap: 12px;">
@@ -207,7 +241,9 @@ class WeatherAlerts {
           </div>
         </div>
       </div>
-    `).join('');
+    `
+      )
+      .join("");
 
     container.innerHTML = `
       <div style="margin-bottom: 16px;">
@@ -232,19 +268,33 @@ class HistoricalChart {
     const container = document.getElementById(this.containerId);
     if (!container) return;
 
-    container.innerHTML = '<p style="padding: 20px; text-align: center;">📊 Lade historische Daten...</p>';
+    container.innerHTML =
+      '<p style="padding: 20px; text-align: center;">📊 Lade historische Daten...</p>';
 
     try {
-      // Fetch last 7 days from Open-Meteo Archive
+      // Prepare shared date window
       const endDate = new Date();
       endDate.setDate(endDate.getDate() - 1); // Yesterday (archive data is delayed)
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - 8); // 8 days ago
 
-      const start = startDate.toISOString().split('T')[0];
-      const end = endDate.toISOString().split('T')[0];
+      const start = startDate.toISOString().split("T")[0];
+      const end = endDate.toISOString().split("T")[0];
 
-      console.log(`Fetching historical data: ${start} to ${end}`);
+      // Try Meteostat first if API key is available
+      const canUseMeteostat =
+        window.apiKeyManager &&
+        window.apiKeyManager.hasKey &&
+        window.apiKeyManager.hasKey("meteostat") &&
+        typeof MeteostatAPI === "function";
+      if (canUseMeteostat) {
+        const used = await this.fetchViaMeteostat(lat, lng, city, start, end);
+        if (used) {
+          return;
+        }
+      }
+
+      console.log(`Fetching historical data (fallback): ${start} to ${end}`);
 
       const response = await fetch(
         `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${start}&end_date=${end}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=auto`
@@ -257,15 +307,87 @@ class HistoricalChart {
 
       const data = await response.json();
       this.renderChart(data, city);
+      if (canUseMeteostat) {
+        window.updateApiStatusEntry?.("meteostat", {
+          id: "meteostat",
+          name: "Meteostat",
+          state: "warning",
+          message: "Fallback auf Open-Meteo Archiv",
+        });
+      }
     } catch (e) {
-      console.error('Historical data error:', e);
+      console.error("Historical data error:", e);
       container.innerHTML = `
         <div style="padding: 40px; text-align: center; background: #f8f9fa; border-radius: 8px;">
           <p style="color: #666; margin: 0;">📈 Historische Daten nicht verfügbar</p>
           <small style="color: #999;">${e.message}</small>
         </div>
       `;
+      window.updateApiStatusEntry?.("meteostat", {
+        id: "meteostat",
+        name: "Meteostat",
+        state: "error",
+        message: e.message,
+      });
     }
+  }
+
+  async fetchViaMeteostat(lat, lng, city, start, end) {
+    try {
+      const api = new MeteostatAPI();
+      const key = window.apiKeyManager.getKey("meteostat");
+      const result = await api.fetchHistorical(lat, lng, start, end, key);
+      if (result.error || !result.daily || !result.daily.length) {
+        throw new Error(result.error || "Keine Meteostat Daten");
+      }
+      const converted = this.meteostatToDailyPayload(result.daily);
+      this.renderChart(converted, city);
+      window.updateApiStatusEntry?.("meteostat", {
+        id: "meteostat",
+        name: "Meteostat",
+        state: "online",
+        message: "Live · Historische Daten",
+        duration: result.duration,
+      });
+      return true;
+    } catch (err) {
+      console.warn("Meteostat fetch failed, falling back:", err.message);
+      window.updateApiStatusEntry?.("meteostat", {
+        id: "meteostat",
+        name: "Meteostat",
+        state: "warning",
+        message: err.message || "Meteostat nicht verfügbar",
+      });
+      return false;
+    }
+  }
+
+  meteostatToDailyPayload(entries) {
+    const time = entries.map((d) => d.date);
+    const max = entries.map((d) =>
+      typeof d.temp_max === "number"
+        ? d.temp_max
+        : typeof d.temp_avg === "number"
+        ? d.temp_avg
+        : null
+    );
+    const min = entries.map((d) =>
+      typeof d.temp_min === "number"
+        ? d.temp_min
+        : typeof d.temp_avg === "number"
+        ? d.temp_avg
+        : null
+    );
+    return {
+      daily: {
+        time,
+        temperature_2m_max: max,
+        temperature_2m_min: min,
+        precipitation_sum: entries.map((d) =>
+          typeof d.precipitation === "number" ? d.precipitation : 0
+        ),
+      },
+    };
   }
 
   renderChart(data, city) {
@@ -273,15 +395,19 @@ class HistoricalChart {
     if (!container) return;
 
     // Clear existing content
-    container.innerHTML = '<canvas id="historical-canvas" style="max-height: 400px;"></canvas>';
+    container.innerHTML =
+      '<canvas id="historical-canvas" style="max-height: 400px;"></canvas>';
 
-    const canvas = document.getElementById('historical-canvas');
+    const canvas = document.getElementById("historical-canvas");
     if (!canvas) return;
 
     const daily = data.daily || {};
-    const labels = (daily.time || []).map(d => {
+    const labels = (daily.time || []).map((d) => {
       const date = new Date(d);
-      return date.toLocaleDateString('de-DE', { day: '2-digit', month: 'short' });
+      return date.toLocaleDateString("de-DE", {
+        day: "2-digit",
+        month: "short",
+      });
     });
 
     // Destroy existing chart
@@ -291,25 +417,25 @@ class HistoricalChart {
 
     // Create chart
     this.chart = new Chart(canvas, {
-      type: 'line',
+      type: "line",
       data: {
         labels: labels,
         datasets: [
           {
-            label: 'Max Temp (°C)',
+            label: "Max Temp (°C)",
             data: daily.temperature_2m_max || [],
-            borderColor: '#dc3545',
-            backgroundColor: 'rgba(220, 53, 69, 0.1)',
-            tension: 0.3
+            borderColor: "#dc3545",
+            backgroundColor: "rgba(220, 53, 69, 0.1)",
+            tension: 0.3,
           },
           {
-            label: 'Min Temp (°C)',
+            label: "Min Temp (°C)",
             data: daily.temperature_2m_min || [],
-            borderColor: '#007bff',
-            backgroundColor: 'rgba(0, 123, 255, 0.1)',
-            tension: 0.3
-          }
-        ]
+            borderColor: "#007bff",
+            backgroundColor: "rgba(0, 123, 255, 0.1)",
+            tension: 0.3,
+          },
+        ],
       },
       options: {
         responsive: true,
@@ -317,21 +443,21 @@ class HistoricalChart {
         plugins: {
           title: {
             display: true,
-            text: `Temperaturverlauf - ${city} (Letzte 7 Tage)`
+            text: `Temperaturverlauf - ${city} (Letzte 7 Tage)`,
           },
           legend: {
-            position: 'bottom'
-          }
+            position: "bottom",
+          },
         },
         scales: {
           y: {
             title: {
               display: true,
-              text: 'Temperatur (°C)'
-            }
-          }
-        }
-      }
+              text: "Temperatur (°C)",
+            },
+          },
+        },
+      },
     });
   }
 }
@@ -344,16 +470,18 @@ class Analytics {
   constructor() {
     this.events = this.loadEvents();
     // Enable by default if not set
-    const savedSetting = localStorage.getItem('wetter_analytics_enabled');
-    this.enabled = savedSetting === null ? true : savedSetting === 'true';
+    const savedSetting = localStorage.getItem("wetter_analytics_enabled");
+    this.enabled = savedSetting === null ? true : savedSetting === "true";
     if (savedSetting === null) {
-      localStorage.setItem('wetter_analytics_enabled', 'true');
+      localStorage.setItem("wetter_analytics_enabled", "true");
     }
   }
 
   loadEvents() {
     try {
-      return JSON.parse(localStorage.getItem('wetter_analytics_events') || '[]');
+      return JSON.parse(
+        localStorage.getItem("wetter_analytics_events") || "[]"
+      );
     } catch (e) {
       return [];
     }
@@ -361,9 +489,12 @@ class Analytics {
 
   saveEvents() {
     try {
-      localStorage.setItem('wetter_analytics_events', JSON.stringify(this.events));
+      localStorage.setItem(
+        "wetter_analytics_events",
+        JSON.stringify(this.events)
+      );
     } catch (e) {
-      console.warn('Analytics save failed:', e);
+      console.warn("Analytics save failed:", e);
     }
   }
 
@@ -373,7 +504,7 @@ class Analytics {
     this.events.push({
       type,
       data,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
 
     if (this.events.length > 1000) {
@@ -384,20 +515,32 @@ class Analytics {
   }
 
   getStats() {
-    const searches = this.events.filter(e => e.type === 'search').length;
-    const apiCalls = this.events.filter(e => e.type === 'api_call').length;
-    const cacheHits = this.events.filter(e => e.type === 'cache_hit').length;
-    const favActions = this.events.filter(e => e.type === 'favorite_action').length;
+    const searches = this.events.filter((e) => e.type === "search").length;
+    const apiCalls = this.events.filter((e) => e.type === "api_call").length;
+    const cacheHits = this.events.filter((e) => e.type === "cache_hit").length;
+    const favActions = this.events.filter(
+      (e) => e.type === "favorite_action"
+    ).length;
 
-    return { searches, apiCalls, cacheHits, favActions, total: this.events.length };
+    return {
+      searches,
+      apiCalls,
+      cacheHits,
+      favActions,
+      total: this.events.length,
+    };
   }
 
   exportData() {
-    return JSON.stringify({
-      events: this.events,
-      stats: this.getStats(),
-      exportDate: new Date().toISOString()
-    }, null, 2);
+    return JSON.stringify(
+      {
+        events: this.events,
+        stats: this.getStats(),
+        exportDate: new Date().toISOString(),
+      },
+      null,
+      2
+    );
   }
 
   renderDashboard(containerId) {
@@ -411,25 +554,35 @@ class Analytics {
         <h3 style="margin-bottom: 16px;">📊 Nutzungsstatistiken</h3>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">
           <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;">
-            <div style="font-size: 2.5rem; font-weight: bold; color: #007BFF;">${stats.searches}</div>
+            <div style="font-size: 2.5rem; font-weight: bold; color: #007BFF;">${
+              stats.searches
+            }</div>
             <div style="color: #666; margin-top: 8px;">Suchanfragen</div>
           </div>
           <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;">
-            <div style="font-size: 2.5rem; font-weight: bold; color: #28a745;">${stats.apiCalls}</div>
+            <div style="font-size: 2.5rem; font-weight: bold; color: #28a745;">${
+              stats.apiCalls
+            }</div>
             <div style="color: #666; margin-top: 8px;">API Calls</div>
           </div>
           <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;">
-            <div style="font-size: 2.5rem; font-weight: bold; color: #ffc107;">${stats.cacheHits}</div>
+            <div style="font-size: 2.5rem; font-weight: bold; color: #ffc107;">${
+              stats.cacheHits
+            }</div>
             <div style="color: #666; margin-top: 8px;">Cache Hits</div>
           </div>
           <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;">
-            <div style="font-size: 2.5rem; font-weight: bold; color: #17a2b8;">${stats.favActions}</div>
+            <div style="font-size: 2.5rem; font-weight: bold; color: #17a2b8;">${
+              stats.favActions
+            }</div>
             <div style="color: #666; margin-top: 8px;">Favoriten</div>
           </div>
         </div>
         <div style="margin-top: 16px; padding: 16px; background: white; border-radius: 8px;">
           <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-            <input type="checkbox" id="analytics-toggle" ${this.enabled ? 'checked' : ''} 
+            <input type="checkbox" id="analytics-toggle" ${
+              this.enabled ? "checked" : ""
+            }
                    style="width: 20px; height: 20px; cursor: pointer;">
             <span>Analytics aktiviert (Daten werden nur lokal gespeichert)</span>
           </label>
@@ -439,23 +592,23 @@ class Analytics {
     `;
 
     // Wire up toggle
-    const toggle = document.getElementById('analytics-toggle');
+    const toggle = document.getElementById("analytics-toggle");
     if (toggle) {
-      toggle.addEventListener('change', (e) => {
+      toggle.addEventListener("change", (e) => {
         this.enabled = e.target.checked;
-        localStorage.setItem('wetter_analytics_enabled', String(this.enabled));
-        console.log('Analytics:', this.enabled ? 'enabled' : 'disabled');
+        localStorage.setItem("wetter_analytics_enabled", String(this.enabled));
+        console.log("Analytics:", this.enabled ? "enabled" : "disabled");
       });
     }
 
     // Wire up export
-    const exportBtn = document.getElementById('export-analytics-btn');
+    const exportBtn = document.getElementById("export-analytics-btn");
     if (exportBtn) {
-      exportBtn.addEventListener('click', () => {
+      exportBtn.addEventListener("click", () => {
         const data = this.exportData();
-        const blob = new Blob([data], { type: 'application/json' });
+        const blob = new Blob([data], { type: "application/json" });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
+        const a = document.createElement("a");
         a.href = url;
         a.download = `wetter-analytics-${Date.now()}.json`;
         a.click();

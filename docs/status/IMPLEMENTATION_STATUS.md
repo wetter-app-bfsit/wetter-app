@@ -371,12 +371,13 @@ wetter-app-main/
 │   ├── push-demo.js
 │   └── http-server.js
 ├── docs/
-│   ├── README.md            # Main documentation
-│   ├── TESTING.md           # Manual QA checklist
-│   ├── api-documentation.md
-│   ├── architecture.md
-│   ├── setup.md
-│   └── IMPLEMENTATION_STATUS.md
+│   ├── README.md            # Dokumentations-Index
+│   ├── guides/              # QUICKSTART, setup, SERVER_START
+│   ├── api/                 # API_INTEGRATION, api-documentation, ...
+│   ├── architecture/        # overview.md
+│   ├── status/              # FIXES, IMPLEMENTATION_STATUS, ...
+│   ├── testing/             # TESTING.md
+│   └── legal/               # PRIVACY_POLICY, TERMS_OF_USE
 ├── coverage/                 # Jest coverage reports
 ├── manifest.json             # PWA manifest
 ├── jest.config.js            # Jest configuration

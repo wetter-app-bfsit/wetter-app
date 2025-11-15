@@ -126,48 +126,57 @@ npm run lint         # ESLint Linting
 ```
 wetter-app-main/
 ├── src/
-│   ├── app.js              # Hauptanwendung & AppState
-│   ├── index.html          # HTML-Template
-│   ├── style.css           # Styling (CSS-Variablen)
-│   ├── service-worker.js   # Service Worker (Caching, Offline)
+│   ├── app.js               # Kernlogik, AppState, Events
+│   ├── features.js          # Karten, Alerts, Historie, Analytics
+│   ├── index.html           # Hauptlayout & Komponenten-Container
+│   ├── style.css            # Globales Styling & Dark Mode
+│   ├── service-worker.js    # PWA & Offline-Strategie
 │   ├── api/
-│   │   ├── weather.js      # Open-Meteo Wrapper
-│   │   ├── brightsky.js    # BrightSky Wrapper (Fallback)
-│   │   ├── openweathermap.js  # OpenWeatherMap (optional)
-│   │   ├── meteostat.js    # Meteostat (optional)
-│   │   └── visualcrossing.js  # VisualCrossing (optional)
+│   │   ├── weather.js       # Open-Meteo Wrapper
+│   │   ├── brightsky.js     # BrightSky Wrapper
+│   │   ├── openweathermap.js
+│   │   ├── visualcrossing.js
+│   │   └── meteostat.js
 │   ├── ui/
-│   │   ├── searchInput.js     # Ortssuche-Komponente
-│   │   ├── weatherDisplay.js  # Wetter-Display
-│   │   ├── errorHandler.js    # Fehler-UI & Retry
-│   │   ├── favorites.js       # Favoriten-Verwaltung
-│   │   ├── mapComponent.js    # Wetterkarten (Leaflet) [optional]
-│   │   ├── alertsPanel.js     # Wetterwarnungen [optional]
-│   │   └── historicalChart.js # Historische Daten [optional]
+│   │   ├── alertsPanel.js
+│   │   ├── errorHandler.js
+│   │   ├── historicalChart.js
+│   │   ├── mapComponent.js
+│   │   ├── searchInput.js
+│   │   └── weatherDisplay.js
 │   ├── utils/
-│   │   ├── cache.js        # Cache-Manager (TTL + localStorage)
-│   │   ├── constants.js    # API-Endpoints, Config, Codes
-│   │   ├── validation.js   # Input/Response-Validierung
-│   │   ├── analytics.js    # Analytics Helper [optional]
-│   │   └── i18n.js         # Translations Helper [optional]
-├── docs/
-│   ├── api-documentation.md    # API-Referenz
-│   ├── architecture.md         # Technische Architektur
-│   ├── setup.md               # Detailliertes Setup
-│   └── ml/                    # ML-Notebooks [optional]
+│   │   ├── analytics.js
+│   │   ├── apiKeyManager.js
+│   │   ├── cache.js
+│   │   ├── constants.js
+│   │   └── validation.js
+│   └── i18n/
+│       ├── de.json
+│       ├── en.json
+│       └── helper.js
+├── docs/                   # Strukturierter Wissensspeicher
+│   ├── README.md           # Dokumentations-Index & Navigationshilfe
+│   ├── guides/             # QUICKSTART, setup, SERVER_START
+│   ├── api/                # API_INTEGRATION, API_ACCOUNTS, etc.
+│   ├── architecture/       # overview.md
+│   ├── status/             # FIXES, IMPLEMENTATION_STATUS, ...
+│   ├── testing/            # TESTING.md
+│   └── legal/              # PRIVACY_POLICY, TERMS_OF_USE
 ├── tools/
-│   ├── push-server.js      # Express Push-Server + Dashboard
-│   └── push-demo.js        # One-off Push Sender
+│   ├── http-server.js      # Lokaler Static Server
+│   ├── push-server.js      # Push-Backend mit Dashboard
+│   └── push-demo.js        # Test-Sender
 ├── tests/
-│   ├── validation.test.js  # Unit-Tests
-│   ├── api.test.js         # API Formatter Tests
-│   ├── test.html          # Browser-Test-Runner
-│   └── jest.config.js     # Jest Config
-├── package.json            # Dependencies & Scripts
-├── manifest.json           # PWA Manifest
-├── service-worker.js       # Service Worker (Root)
-├── LICENSE
-└── README.md              # Diese Datei
+│   ├── analytics.test.js
+│   ├── api.test.js
+│   ├── cache.test.js
+│   ├── e2e.test.js
+│   └── validation.test.js
+├── coverage/               # Jest Coverage Reports
+├── manifest.json
+├── package.json / lock
+├── README.md               # Diese Datei
+└── LICENSE
 ```
 
 ## Barrierefreiheit (WCAG 2.1 AA)
