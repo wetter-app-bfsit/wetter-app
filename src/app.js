@@ -91,15 +91,15 @@ class AppState {
 
   moveFavorite(fromIndex, toIndex) {
     if (fromIndex === toIndex) return;
-    if (
-      fromIndex < 0 ||
-      toIndex < 0 ||
-      fromIndex >= this.favorites.length ||
-      toIndex > this.favorites.length
-    )
-      return;
+    const lastIndex = this.favorites.length - 1;
+    if (fromIndex < 0 || fromIndex > lastIndex) return;
+    let targetIndex = Math.max(0, Math.min(toIndex, lastIndex));
     const item = this.favorites.splice(fromIndex, 1)[0];
-    this.favorites.splice(toIndex, 0, item);
+    if (!item) return;
+    if (fromIndex < targetIndex) {
+      targetIndex -= 1;
+    }
+    this.favorites.splice(targetIndex, 0, item);
     try {
       localStorage.setItem("wetter_favorites", JSON.stringify(this.favorites));
     } catch (e) {
@@ -165,24 +165,43 @@ function renderFavorites() {
     return;
   }
 
-  favs.forEach((f) => {
+  const formatter = new Intl.DateTimeFormat("de-DE", {
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  favs.forEach((f, index) => {
     const item = document.createElement("div");
     item.className = "favorite-item";
     item.dataset.city = f.city;
+    item.dataset.index = String(index);
     item.draggable = true;
+    item.setAttribute("role", "listitem");
+    item.setAttribute("aria-label", `Favorit ${f.city}`);
+    item.setAttribute("aria-grabbed", "false");
 
     item.addEventListener("dragstart", (ev) => {
-      ev.dataTransfer.setData("text/plain", f.city);
+      ev.dataTransfer.effectAllowed = "move";
+      ev.dataTransfer.setData("text/plain", item.dataset.index || "0");
       item.classList.add("dragging");
+      item.setAttribute("aria-grabbed", "true");
     });
 
     item.addEventListener("dragend", () => {
       item.classList.remove("dragging");
+      item.classList.remove("dragover");
+      item.setAttribute("aria-grabbed", "false");
+    });
+
+    item.addEventListener("dragenter", (ev) => {
+      ev.preventDefault();
+      item.classList.add("dragover");
     });
 
     item.addEventListener("dragover", (ev) => {
       ev.preventDefault();
-      item.classList.add("dragover");
+      ev.dataTransfer.dropEffect = "move";
     });
 
     item.addEventListener("dragleave", () => {
@@ -191,16 +210,17 @@ function renderFavorites() {
 
     item.addEventListener("drop", (ev) => {
       ev.preventDefault();
-      const cityDragged = ev.dataTransfer.getData("text/plain");
-      const fromIndex = appState.favorites.findIndex(
-        (x) => x.city === cityDragged
-      );
-      const toIndex = appState.favorites.findIndex((x) => x.city === f.city);
-      if (fromIndex >= 0 && toIndex >= 0) {
+      item.classList.remove("dragover");
+      const fromIndex = parseInt(ev.dataTransfer.getData("text/plain"), 10);
+      const toIndex = parseInt(item.dataset.index || "-1", 10);
+      if (!Number.isNaN(fromIndex) && !Number.isNaN(toIndex)) {
         appState.moveFavorite(fromIndex, toIndex);
         renderFavorites();
       }
     });
+
+    const info = document.createElement("div");
+    info.className = "favorite-info";
 
     const nameBtn = document.createElement("button");
     nameBtn.className = "fav-name btn-small";
@@ -209,6 +229,13 @@ function renderFavorites() {
     nameBtn.addEventListener("click", () => {
       loadWeather(f.city);
     });
+
+    const meta = document.createElement("span");
+    meta.className = "favorite-meta";
+    const metaDate = f.addedAt ? new Date(f.addedAt) : new Date();
+    meta.textContent = `Hinzugefügt: ${formatter.format(metaDate)}`;
+    info.appendChild(nameBtn);
+    info.appendChild(meta);
 
     const removeBtn = document.createElement("button");
     removeBtn.className = "favorite-remove btn-remove";
@@ -230,11 +257,28 @@ function renderFavorites() {
       });
     });
 
-    item.appendChild(nameBtn);
-    item.appendChild(removeBtn);
+    const actions = document.createElement("div");
+    actions.className = "favorite-actions";
+    actions.appendChild(removeBtn);
+
+    item.appendChild(info);
+    item.appendChild(actions);
     container.appendChild(item);
   });
+
+  syncFavoriteToggleState();
 }
+
+function syncFavoriteToggleState(city) {
+  const favBtn = document.getElementById("favoriteToggle");
+  if (!favBtn || !window.appState) return;
+  const targetCity = city || window.appState.currentCity;
+  if (!targetCity) return;
+  const isFav = window.appState.isFavorite(targetCity);
+  favBtn.textContent = isFav ? "⭐" : "☆";
+  favBtn.title = isFav ? "Aus Favoriten entfernen" : "Zu Favoriten hinzufügen";
+}
+window.syncFavoriteToggleState = syncFavoriteToggleState;
 
 let apiStatusStore = [];
 
@@ -261,9 +305,12 @@ function initializeApiStatusDefaults() {
       id: provider.id,
       name: provider.name,
       tag: provider.tag,
+      requiresKey: !!provider.requiresKey,
+      hasKey,
       state,
       message,
       detail,
+      updatedAt: Date.now(),
     };
   });
   renderApiStatusPanel();
@@ -271,13 +318,50 @@ function initializeApiStatusDefaults() {
 
 function updateApiStatusStore(updates = []) {
   if (!Array.isArray(updates)) return;
+  const timestamp = Date.now();
   updates.forEach((update) => {
     if (!update || !update.id) return;
+    const providerMeta = API_PROVIDERS.find((p) => p.id === update.id);
     const idx = apiStatusStore.findIndex((entry) => entry.id === update.id);
+    const baseEntry =
+      idx >= 0
+        ? apiStatusStore[idx]
+        : {
+            id: update.id,
+            name: providerMeta?.name || update.id,
+            tag: providerMeta?.tag,
+            requiresKey: !!providerMeta?.requiresKey,
+            hasKey: providerMeta?.requiresKey ? false : true,
+            state: "pending",
+            message: "Noch keine Daten",
+          };
+
+    const merged = {
+      ...baseEntry,
+      ...update,
+    };
+
+    if (providerMeta) {
+      merged.name = merged.name || providerMeta.name;
+      merged.tag = merged.tag || providerMeta.tag;
+      merged.requiresKey = !!providerMeta.requiresKey;
+      if (merged.hasKey === undefined) {
+        merged.hasKey = providerMeta.requiresKey ? false : true;
+      }
+    }
+
+    if (typeof update.hasKey === "boolean") {
+      merged.hasKey = update.hasKey;
+    }
+
+    merged.state = merged.state || "pending";
+    merged.message = merged.message || baseEntry.message || "Noch keine Daten";
+    merged.updatedAt = update.updatedAt || timestamp;
+
     if (idx >= 0) {
-      apiStatusStore[idx] = { ...apiStatusStore[idx], ...update };
+      apiStatusStore[idx] = merged;
     } else {
-      apiStatusStore.push(update);
+      apiStatusStore.push(merged);
     }
   });
   renderApiStatusPanel();
@@ -286,6 +370,7 @@ function updateApiStatusStore(updates = []) {
 function renderApiStatusPanel() {
   const container = document.getElementById("api-status");
   if (!container) return;
+  ensureApiStatusActionsBinding(container);
 
   if (!apiStatusStore.length) {
     container.innerHTML =
@@ -310,35 +395,106 @@ function renderApiStatusPanel() {
     }
   };
 
+  const stateLabelFor = (state) => {
+    switch (state) {
+      case "online":
+        return "ONLINE";
+      case "warning":
+        return "WARNUNG";
+      case "error":
+        return "FEHLER";
+      case "missing-key":
+        return "KEY FEHLT";
+      case "invalid-key":
+        return "KEY UNGUELTIG";
+      case "skipped":
+        return "UEBERSPRUNGEN";
+      default:
+        return "WARTET";
+    }
+  };
+
   const html = apiStatusStore
     .map((entry) => {
       const icon = iconFor(entry.state);
-      const duration =
-        typeof entry.duration === "number" ? `${entry.duration}ms` : "";
-      const cacheFlag = entry.fromCache ? "Cache" : "";
-      const meta = [duration, cacheFlag].filter(Boolean).join(" · ");
+      const metaParts = [];
+      if (typeof entry.duration === "number") {
+        metaParts.push(`${entry.duration}ms`);
+      }
+      if (entry.fromCache) {
+        metaParts.push("Cache");
+      }
+      if (entry.updatedAt) {
+        metaParts.push(
+          new Date(entry.updatedAt).toLocaleTimeString("de-DE", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        );
+      }
+      const meta = metaParts.filter(Boolean).join(" · ");
       const detail = entry.detail ? escapeHtml(entry.detail) : "";
+      const tagMarkup = entry.tag
+        ? `<span class="api-status-tag">${escapeHtml(entry.tag)}</span>`
+        : "";
+      const stateBadge = entry.state
+        ? `<span class="api-status-state state-${entry.state}">${stateLabelFor(
+            entry.state
+          )}</span>`
+        : "";
+      const keyButtonId = providerKeyInputId(entry.id);
+      const keyBlock = entry.requiresKey
+        ? `<div class="api-status-keyline">
+            <span class="api-status-key ${
+              entry.hasKey ? "key-ok" : "key-missing"
+            }">${entry.hasKey ? "Key gespeichert" : "Key fehlt"}</span>
+            ${
+              keyButtonId
+                ? `<button class="api-status-action" type="button" data-api-provider="${
+                    entry.id
+                  }">${
+                    entry.hasKey ? "Key verwalten" : "Key hinzufuegen"
+                  }</button>`
+                : ""
+            }
+          </div>`
+        : "";
       return `
-      <div class="api-status-item status-${entry.state || "pending"}">
+      <div class="api-status-item status-${
+        entry.state || "pending"
+      }" data-provider="${entry.id || ""}">
         <div class="api-status-row">
           <span class="api-status-name">${icon} ${escapeHtml(
         entry.name || ""
       )}</span>
-          ${
-            entry.tag
-              ? `<span class="api-status-tag">${escapeHtml(entry.tag)}</span>`
-              : ""
-          }
+          <div class="api-status-row-meta">
+            ${tagMarkup}
+            ${stateBadge}
+          </div>
         </div>
         <div class="api-status-message">${escapeHtml(entry.message || "")}</div>
         ${meta ? `<div class="api-status-meta">${meta}</div>` : ""}
         ${detail ? `<small class="api-status-extra">${detail}</small>` : ""}
+        ${keyBlock}
       </div>
     `;
     })
     .join("");
 
   container.innerHTML = html;
+}
+
+function ensureApiStatusActionsBinding(container) {
+  if (!container || container.dataset.actionsBound) return;
+  container.addEventListener("click", (event) => {
+    const target = event.target.closest(".api-status-action");
+    if (!target) return;
+    const providerId = target.dataset.apiProvider;
+    if (!providerId) return;
+    const inputId = providerKeyInputId(providerId);
+    openSettingsModal(inputId || "settings-modal");
+  });
+  container.dataset.actionsBound = "true";
 }
 
 function buildApiStatusMessage(source) {
@@ -398,6 +554,9 @@ function notifyKeyIssue(providerId, errorMessage) {
         ]
       : undefined,
   });
+  if (inputId) {
+    focusAndHighlight(inputId, 250);
+  }
   return true;
 }
 
@@ -457,6 +616,8 @@ function syncProviderKeyState(providerId) {
       : provider.note;
   }
 
+  payload.requiresKey = !!provider.requiresKey;
+  payload.hasKey = hasKey;
   updateApiStatusStore([payload]);
 }
 
@@ -762,6 +923,15 @@ async function fetchWeatherData(lat, lon) {
         sources.push({
           id: "openweathermap",
           name: "OpenWeatherMap",
+          state: openWeatherMapResult.state,
+          statusMessage:
+            openWeatherMapResult.statusMessage ||
+            buildApiStatusMessage({
+              success: true,
+              duration: openWeatherMapResult.duration,
+              fromCache: false,
+            }),
+          statusDetail: openWeatherMapResult.detail,
           success: true,
           duration: openWeatherMapResult.duration || 0,
           fromCache: false,
@@ -771,6 +941,9 @@ async function fetchWeatherData(lat, lon) {
         sources.push({
           id: "openweathermap",
           name: "OpenWeatherMap",
+          state: openWeatherMapResult.state,
+          statusMessage: openWeatherMapResult.statusMessage,
+          statusDetail: openWeatherMapResult.detail,
           success: false,
           error: openWeatherMapResult.error,
         });
@@ -1056,10 +1229,22 @@ function initApp() {
   window.apiKeyManager = new APIKeyManager();
 
   // Setze Default API-Keys (falls noch nicht vorhanden)
-  window.apiKeyManager.setDefaults({
+  const runtimeDefaultKeys =
+    typeof window !== "undefined" &&
+    window.__APP_DEFAULT_API_KEYS &&
+    typeof window.__APP_DEFAULT_API_KEYS === "object"
+      ? window.__APP_DEFAULT_API_KEYS
+      : {};
+
+  const bakedInDefaults = {
     openweathermap: "22889ea71f66faab6196bde649dd04a9",
     visualcrossing: "JVCZ3WAHB5XBT7GXQC7RQBGBE",
     meteostat: "edda72c60bmsh4a38c4687147239p14e8d5jsn6f578346b68a",
+  };
+
+  window.apiKeyManager.setDefaults({
+    ...bakedInDefaults,
+    ...runtimeDefaultKeys,
   });
 
   initializeApiStatusDefaults();
@@ -1080,9 +1265,12 @@ function initApp() {
     "current-weather",
     "forecast-container"
   );
+  window.searchComponent = searchComponent;
+  window.weatherDisplay = weatherDisplay;
 
   // Globale State
   appState = new AppState();
+  window.appState = appState;
 
   // Render Favorites initial
   try {
@@ -1131,6 +1319,7 @@ function initApp() {
   const weatherAlerts = new WeatherAlerts("weather-alerts");
   const historicalChart = new HistoricalChart("historical-chart");
   const analytics = new Analytics();
+  window.weatherMap = weatherMap;
 
   // Log analytics events
   window.logAnalyticsEvent = (type, data) => analytics.logEvent(type, data);
@@ -1274,6 +1463,7 @@ function initApp() {
       // Update Favoriten-Liste
       try {
         renderFavorites();
+        syncFavoriteToggleState(city);
       } catch (err) {
         console.warn(err);
       }
@@ -1286,19 +1476,17 @@ function initApp() {
   // Push toggle handler (subscribe/unsubscribe)
   const pushBtn = document.getElementById("pushToggle");
   if (pushBtn) {
+    syncPushToggleState();
     pushBtn.addEventListener("click", async () => {
+      const enabled = localStorage.getItem("wetter_push_enabled") === "true";
+      setPushToggleBusy(true);
       try {
-        const enabled = localStorage.getItem("wetter_push_enabled") === "true";
         if (enabled) {
           await unsubscribeFromPush();
-          pushBtn.textContent = "🔔";
-          pushBtn.title = "Push-Benachrichtigungen aktivieren";
           showInfo("Push-Benachrichtigungen deaktiviert");
         } else {
           const ok = await subscribeToPush();
           if (ok) {
-            pushBtn.textContent = "🔕";
-            pushBtn.title = "Push-Benachrichtigungen deaktivieren";
             showSuccess(
               "Push-Benachrichtigungen aktiviert (Subscription gespeichert)"
             );
@@ -1307,6 +1495,54 @@ function initApp() {
       } catch (e) {
         console.warn("Push toggle error", e);
         handlePushToggleError(e);
+      } finally {
+        setPushToggleBusy(false);
+      }
+    });
+  }
+
+  // Cache & Verlauf Aktionen in den Einstellungen
+  const clearCacheBtn = document.getElementById("clear-cache-btn");
+  if (clearCacheBtn) {
+    clearCacheBtn.addEventListener("click", () => {
+      try {
+        const statsBefore =
+          typeof weatherCache.getStats === "function"
+            ? weatherCache.getStats()
+            : null;
+        weatherCache.clear();
+        showSuccess("Cache geleert – neue Anfragen laden frische Daten.");
+        if (window.logAnalyticsEvent) {
+          window.logAnalyticsEvent("settings_action", {
+            action: "clear_cache",
+            clearedEntries: statsBefore?.totalEntries || 0,
+            clearedBytes: statsBefore?.totalSize || 0,
+          });
+        }
+      } catch (err) {
+        console.warn("Cache konnte nicht geleert werden", err);
+        showWarning(
+          "Cache konnte nicht geleert werden. Bitte erneut versuchen."
+        );
+      }
+    });
+  }
+
+  const clearRecentBtn = document.getElementById("clear-recent-btn");
+  if (clearRecentBtn) {
+    clearRecentBtn.addEventListener("click", () => {
+      if (
+        window.searchComponent &&
+        typeof window.searchComponent.clearRecent === "function"
+      ) {
+        const hadEntries = window.searchComponent.clearRecent();
+        if (hadEntries) {
+          showSuccess("Suchverlauf geleert.");
+        } else {
+          showInfo("Kein Suchverlauf vorhanden.");
+        }
+      } else {
+        showWarning("Suchverlauf konnte nicht geleert werden.");
       }
     });
   }
@@ -1324,14 +1560,40 @@ function initApp() {
 
   // API Keys - Save handlers
   if (owmKeyInput) {
-    owmKeyInput.addEventListener("change", (e) => {
-      const success = window.apiKeyManager.setKey(
-        "openweathermap",
-        e.target.value
-      );
+    const persistOwmKey = (rawValue) => {
+      const trimmed = (rawValue || "").trim();
+      if (!trimmed) {
+        window.apiKeyManager.setKey("openweathermap", "");
+        showInfo("OpenWeatherMap API-Key entfernt");
+        syncProviderKeyState("openweathermap");
+        window.weatherMap?.refreshOverlays?.();
+        return;
+      }
+      if (!/^[A-Za-z0-9]{32,64}$/.test(trimmed)) {
+        showWarning(
+          "OpenWeatherMap API-Key muss 32 Zeichen enthalten. Bitte kopiere ihn exakt aus deinem OWM-Dashboard."
+        );
+        focusAndHighlight("openweathermap-key", 200);
+        return;
+      }
+      const success = window.apiKeyManager.setKey("openweathermap", trimmed);
       if (success) {
         showSuccess("OpenWeatherMap API-Key gespeichert");
         syncProviderKeyState("openweathermap");
+        window.weatherMap?.refreshOverlays?.();
+      }
+    };
+
+    ["change", "blur"].forEach((evtName) => {
+      owmKeyInput.addEventListener(evtName, (e) =>
+        persistOwmKey(e.target.value)
+      );
+    });
+
+    owmKeyInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        persistOwmKey(e.target.value);
       }
     });
   }
@@ -1361,13 +1623,14 @@ function initApp() {
   const saveVapidBtn = document.getElementById("saveVapidBtn");
   if (saveVapidBtn) {
     saveVapidBtn.addEventListener("click", () => {
-      const v = document.getElementById("vapidKeyInput")?.value || "";
-      try {
-        localStorage.setItem("wetter_vapid_public", v.trim());
-        showSuccess("VAPID key gespeichert.");
-      } catch (e) {
-        showWarning("Konnte VAPID key nicht speichern");
+      const v = document.getElementById("vapidKeyInput")?.value?.trim() || "";
+      if (v.length < 20) {
+        showWarning("Bitte gib einen gültigen VAPID Public Key an.");
+        return;
       }
+      persistVapidKey(v);
+      showSuccess("VAPID key gespeichert.");
+      syncPushToggleState();
     });
   }
 
@@ -1376,16 +1639,20 @@ function initApp() {
   if (fetchVapidBtn) {
     fetchVapidBtn.addEventListener("click", async () => {
       try {
-        const key = await fetchVapidFromServer();
+        fetchVapidBtn.disabled = true;
+        fetchVapidBtn.dataset.loading = "true";
+        const key = await ensureVapidKey({ forceFetch: true });
         if (key) {
-          document.getElementById("vapidKeyInput").value = key;
-          localStorage.setItem("wetter_vapid_public", key);
           showSuccess("VAPID key vom lokalen Server geladen");
         } else {
           showWarning("Konnte VAPID key nicht vom lokalen Server laden");
         }
       } catch (e) {
         showWarning("Fehler beim Laden des VAPID keys: " + (e && e.message));
+      } finally {
+        fetchVapidBtn.disabled = false;
+        delete fetchVapidBtn.dataset.loading;
+        syncPushToggleState();
       }
     });
   }
@@ -1393,23 +1660,18 @@ function initApp() {
   // AUTO-FETCH VAPID on app init (fixes push notification issue)
   (async () => {
     try {
-      const existingKey = localStorage.getItem("wetter_vapid_public");
-      if (!existingKey || existingKey.length < 20) {
-        console.log("🔑 Lade VAPID Key automatisch vom Server...");
-        const key = await fetchVapidFromServer();
-        if (key) {
-          localStorage.setItem("wetter_vapid_public", key);
-          const vapidInput = document.getElementById("vapidKeyInput");
-          if (vapidInput) vapidInput.value = key;
-          console.log("✅ VAPID Key automatisch geladen");
-        }
+      const key = await ensureVapidKey();
+      if (key) {
+        console.log("✅ VAPID Key bereitgestellt");
       } else {
-        console.log("✅ VAPID Key bereits vorhanden");
-        const vapidInput = document.getElementById("vapidKeyInput");
-        if (vapidInput) vapidInput.value = existingKey;
+        console.warn(
+          "⚠️ Kein VAPID Key abrufbar – bitte Push-Einstellungen prüfen"
+        );
       }
     } catch (e) {
       console.warn("⚠️ VAPID Auto-Fetch fehlgeschlagen:", e.message);
+    } finally {
+      syncPushToggleState();
     }
   })();
 
@@ -1566,32 +1828,16 @@ async function subscribeToPush() {
     throw new Error("Service Worker nicht unterstützt");
   const reg = await navigator.serviceWorker.ready;
   try {
-    // Versuche VAPID key aus localStorage oder Input zu lesen
-    let stored = (
-      localStorage.getItem("wetter_vapid_public") ||
-      document.getElementById("vapidKeyInput")?.value ||
-      ""
-    ).trim();
-    // If missing, attempt to fetch from local push-server /keys
+    let stored = await ensureVapidKey();
     if (!stored || stored.length < 20) {
-      try {
-        const fetched = await fetchVapidFromServer();
-        if (fetched) {
-          stored = fetched;
-          localStorage.setItem("wetter_vapid_public", stored);
-          showInfo(
-            "VAPID public key automatisch vom lokalen Push-Server geladen"
-          );
-        }
-      } catch (e) {
-        // ignore - handled below
-      }
+      stored = resolveVapidKey();
     }
     if (!stored || stored.length < 20) {
       throw new Error(
         'Missing VAPID public key. Bitte füge in den Einstellungen deinen VAPID Public Key (Base64 URL-safe) ein oder starte den lokalen Push-Server und klicke "Fetch VAPID".'
       );
     }
+    persistVapidKey(stored);
     const options = { userVisibleOnly: true };
     try {
       options.applicationServerKey = urlBase64ToUint8Array(stored);
@@ -1612,6 +1858,7 @@ async function subscribeToPush() {
     localStorage.setItem("wetter_push_subscription", JSON.stringify(sub));
     localStorage.setItem("wetter_push_enabled", "true");
     console.log("Push Subscription:", sub);
+    syncPushToggleState();
     return true;
   } catch (err) {
     console.warn("Push subscription failed", err);
@@ -1676,6 +1923,7 @@ async function unsubscribeFromPush() {
   }
   localStorage.removeItem("wetter_push_subscription");
   localStorage.setItem("wetter_push_enabled", "false");
+  syncPushToggleState();
   return true;
 }
 
@@ -1724,6 +1972,89 @@ function handlePushToggleError(error) {
   showWarning(`Push konnte nicht umgeschaltet werden: ${message}`, null, {
     meta: "Bitte prüfe die Browser-Konsole für weitere Details.",
   });
+}
+
+function resolveVapidKey() {
+  const input = document.getElementById("vapidKeyInput");
+  const typed = input?.value?.trim();
+  if (typed && typed.length >= 20) return typed;
+  try {
+    const stored = localStorage.getItem("wetter_vapid_public") || "";
+    return stored.trim();
+  } catch (e) {
+    return "";
+  }
+}
+
+function persistVapidKey(key) {
+  if (!key) return "";
+  const normalized = key.trim();
+  if (!normalized) return "";
+  try {
+    localStorage.setItem("wetter_vapid_public", normalized);
+  } catch (e) {
+    console.warn("VAPID key konnte nicht gespeichert werden:", e);
+  }
+  const input = document.getElementById("vapidKeyInput");
+  if (input && input.value !== normalized) {
+    input.value = normalized;
+  }
+  return normalized;
+}
+
+function hasUsableVapidKey() {
+  return resolveVapidKey().length >= 20;
+}
+
+async function ensureVapidKey({ forceFetch = false } = {}) {
+  if (!forceFetch) {
+    const existing = resolveVapidKey();
+    if (existing && existing.length >= 20) {
+      return existing;
+    }
+  }
+  const fetched = await fetchVapidFromServer();
+  if (fetched && fetched.length >= 20) {
+    return persistVapidKey(fetched);
+  }
+  return null;
+}
+
+function syncPushToggleState() {
+  const pushBtn = document.getElementById("pushToggle");
+  if (!pushBtn) return;
+  let enabled = false;
+  try {
+    enabled = localStorage.getItem("wetter_push_enabled") === "true";
+  } catch (e) {
+    enabled = false;
+  }
+  const hasKey = hasUsableVapidKey();
+  pushBtn.textContent = enabled ? "🔕" : "🔔";
+  pushBtn.title = enabled
+    ? "Push-Benachrichtigungen deaktivieren"
+    : hasKey
+    ? "Push-Benachrichtigungen aktivieren"
+    : "VAPID Key erforderlich";
+  pushBtn.setAttribute("aria-pressed", enabled ? "true" : "false");
+  const shouldDisable = !hasKey && !enabled;
+  pushBtn.disabled = shouldDisable;
+  pushBtn.dataset.pushState = enabled ? "on" : "off";
+  pushBtn.dataset.pushKey = hasKey ? "ready" : "missing";
+}
+
+function setPushToggleBusy(isBusy) {
+  const pushBtn = document.getElementById("pushToggle");
+  if (!pushBtn) return;
+  if (isBusy) {
+    pushBtn.setAttribute("aria-busy", "true");
+    pushBtn.dataset.loading = "true";
+    pushBtn.disabled = true;
+  } else {
+    pushBtn.removeAttribute("aria-busy");
+    delete pushBtn.dataset.loading;
+    syncPushToggleState();
+  }
 }
 
 function openSettingsModal(focusFieldId) {

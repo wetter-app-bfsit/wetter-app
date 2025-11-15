@@ -4,9 +4,9 @@ class CacheManager {
   constructor() {
     this.cache = new Map();
     this.ttl = {
-      WEATHER: 30 * 60 * 1000,      // 30 Minuten für Wetterdaten
+      WEATHER: 30 * 60 * 1000, // 30 Minuten für Wetterdaten
       GEO: 7 * 24 * 60 * 60 * 1000, // 7 Tage für Geo-Daten
-      FORECAST: 60 * 60 * 1000      // 1 Stunde für Vorhersagen
+      FORECAST: 60 * 60 * 1000, // 1 Stunde für Vorhersagen
     };
   }
 
@@ -16,13 +16,13 @@ class CacheManager {
    * @param {*} value - Zu speichernder Wert
    * @param {string} type - Cache-Typ (WEATHER, GEO, FORECAST)
    */
-  set(key, value, type = 'WEATHER') {
+  set(key, value, type = "WEATHER") {
     const expireTime = Date.now() + this.ttl[type];
     this.cache.set(key, {
       value,
       expireTime,
       createdAt: Date.now(),
-      type
+      type,
     });
     this._saveToLocalStorage(key);
   }
@@ -44,6 +44,12 @@ class CacheManager {
       this.delete(key);
       return null;
     }
+
+    this._emitAnalyticsEvent("cache_hit", {
+      key,
+      type: cached.type || "unknown",
+      ageMs: Date.now() - (cached.createdAt || Date.now()),
+    });
 
     return cached.value;
   }
@@ -74,10 +80,11 @@ class CacheManager {
     // Lösche alle Cache-Einträge aus localStorage
     for (let i = localStorage.length - 1; i >= 0; i--) {
       const key = localStorage.key(i);
-      if (key.startsWith('cache_')) {
+      if (key.startsWith("cache_")) {
         localStorage.removeItem(key);
       }
     }
+    this._emitAnalyticsEvent("cache_clear", { scope: "all" });
   }
 
   /**
@@ -96,14 +103,14 @@ class CacheManager {
         type: item.type,
         size,
         age: Date.now() - item.createdAt,
-        expiresIn: item.expireTime - Date.now()
+        expiresIn: item.expireTime - Date.now(),
       });
     });
 
     return {
       totalEntries: this.cache.size,
       totalSize: totalSize,
-      entries
+      entries,
     };
   }
 
@@ -132,7 +139,7 @@ class CacheManager {
         localStorage.setItem(`cache_${key}`, JSON.stringify(item));
       }
     } catch (e) {
-      console.warn('localStorage voll oder deaktiviert:', e);
+      console.warn("localStorage voll oder deaktiviert:", e);
     }
   }
 
@@ -149,9 +156,22 @@ class CacheManager {
         return item;
       }
     } catch (e) {
-      console.warn('Fehler beim Laden aus localStorage:', e);
+      console.warn("Fehler beim Laden aus localStorage:", e);
     }
     return null;
+  }
+
+  _emitAnalyticsEvent(type, detail = {}) {
+    try {
+      if (typeof window !== "undefined" && window.logAnalyticsEvent) {
+        window.logAnalyticsEvent(type, {
+          ...detail,
+          timestamp: Date.now(),
+        });
+      }
+    } catch (e) {
+      console.warn("Analytics Event konnte nicht gesendet werden:", e);
+    }
   }
 }
 
@@ -166,7 +186,7 @@ class WeatherCache extends CacheManager {
    */
   setWeather(city, data) {
     const key = this._normalizeCity(city);
-    this.set(key, data, 'WEATHER');
+    this.set(key, data, "WEATHER");
   }
 
   /**
@@ -186,7 +206,7 @@ class WeatherCache extends CacheManager {
    */
   setGeo(city, geoData) {
     const key = `geo_${this._normalizeCity(city)}`;
-    this.set(key, geoData, 'GEO');
+    this.set(key, geoData, "GEO");
   }
 
   /**
@@ -207,7 +227,7 @@ class WeatherCache extends CacheManager {
    */
   setForecast(city, source, data) {
     const key = `forecast_${this._normalizeCity(city)}_${source}`;
-    this.set(key, data, 'FORECAST');
+    this.set(key, data, "FORECAST");
   }
 
   /**
@@ -226,7 +246,7 @@ class WeatherCache extends CacheManager {
    * @private
    */
   _normalizeCity(city) {
-    return city.trim().toLowerCase().replace(/\s+/g, '_');
+    return city.trim().toLowerCase().replace(/\s+/g, "_");
   }
 
   /**
@@ -237,22 +257,22 @@ class WeatherCache extends CacheManager {
     const grouped = {
       weather: [],
       geo: [],
-      forecast: []
+      forecast: [],
     };
 
-    stats.entries.forEach(entry => {
-      if (entry.type === 'WEATHER') {
+    stats.entries.forEach((entry) => {
+      if (entry.type === "WEATHER") {
         grouped.weather.push(entry);
-      } else if (entry.type === 'GEO') {
+      } else if (entry.type === "GEO") {
         grouped.geo.push(entry);
-      } else if (entry.type === 'FORECAST') {
+      } else if (entry.type === "FORECAST") {
         grouped.forecast.push(entry);
       }
     });
 
     return {
       ...stats,
-      byType: grouped
+      byType: grouped,
     };
   }
 }
@@ -268,7 +288,9 @@ function setCacheInvalidation() {
   setInterval(() => {
     const cleaned = weatherCache.cleanupExpired();
     if (cleaned > 0) {
-      console.log(`🧹 Cache bereinigt: ${cleaned} abgelaufene Einträge entfernt`);
+      console.log(
+        `🧹 Cache bereinigt: ${cleaned} abgelaufene Einträge entfernt`
+      );
     }
   }, 60 * 1000); // 60 Sekunden
 }
@@ -277,6 +299,6 @@ function setCacheInvalidation() {
  * Logging für Cache-Operationen
  */
 function logCache(operation, key, success = true) {
-  const emoji = success ? '✅' : '❌';
+  const emoji = success ? "✅" : "❌";
   console.log(`${emoji} Cache ${operation}: ${key}`);
 }

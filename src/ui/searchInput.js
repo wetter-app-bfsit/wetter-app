@@ -6,7 +6,7 @@ class SearchInputComponent {
     this.button = document.querySelector(buttonSelector);
     this.recentList = document.querySelector(recentListSelector);
     this.recentCities = this._loadRecentCities();
-    
+
     this._setupEventListeners();
     this._renderRecentCities();
   }
@@ -17,17 +17,17 @@ class SearchInputComponent {
    */
   _setupEventListeners() {
     // Enter-Taste
-    this.input?.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
+    this.input?.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
         this.onSearch();
       }
     });
 
     // Button-Click
-    this.button?.addEventListener('click', () => this.onSearch());
+    this.button?.addEventListener("click", () => this.onSearch());
 
     // Input-Änderungen (für Auto-Complete später)
-    this.input?.addEventListener('input', (e) => {
+    this.input?.addEventListener("input", (e) => {
       this._handleInputChange(e.target.value);
     });
   }
@@ -37,26 +37,26 @@ class SearchInputComponent {
    * @returns {object} - {valid: boolean, value: string, error: string|null}
    */
   getSearchInput() {
-    const value = this.input?.value || '';
-    
+    const value = this.input?.value || "";
+
     // Sanitize
     const sanitized = sanitizeInput(value);
-    
+
     // Validiere
     const validation = validateCityInput(sanitized);
-    
+
     if (!validation.valid) {
       return {
         valid: false,
         value: sanitized,
-        error: validation.error
+        error: validation.error,
       };
     }
 
     return {
       valid: true,
       value: sanitized,
-      error: null
+      error: null,
     };
   }
 
@@ -65,7 +65,7 @@ class SearchInputComponent {
    */
   onSearch() {
     const input = this.getSearchInput();
-    
+
     if (!input.valid) {
       showError(input.error);
       return;
@@ -75,8 +75,8 @@ class SearchInputComponent {
     this._addToRecentCities(input.value);
 
     // Trigger Event
-    const event = new CustomEvent('search', {
-      detail: { city: input.value }
+    const event = new CustomEvent("search", {
+      detail: { city: input.value },
     });
     window.dispatchEvent(event);
   }
@@ -92,7 +92,7 @@ class SearchInputComponent {
     }
 
     // Hier könnte Auto-Complete implementiert werden
-    console.log('Auto-Complete für:', value);
+    console.log("Auto-Complete für:", value);
   }
 
   /**
@@ -109,14 +109,16 @@ class SearchInputComponent {
    */
   _addToRecentCities(city) {
     // Entferne falls schon vorhanden
-    this.recentCities = this.recentCities.filter(c => c.toLowerCase() !== city.toLowerCase());
-    
+    this.recentCities = this.recentCities.filter(
+      (c) => c.toLowerCase() !== city.toLowerCase()
+    );
+
     // Füge am Anfang ein
     this.recentCities.unshift(city);
-    
+
     // Begrenzte auf MAX_RECENT_CITIES
     this.recentCities = this.recentCities.slice(0, UI_CONFIG.MAX_RECENT_CITIES);
-    
+
     // Speichere
     this._saveRecentCities();
   }
@@ -129,7 +131,8 @@ class SearchInputComponent {
     if (!this.recentList) return;
 
     if (this.recentCities.length === 0) {
-      this.recentList.innerHTML = '<p class="text-muted">Keine zuletzt gesuchten Orte</p>';
+      this.recentList.innerHTML =
+        '<p class="text-muted">Keine zuletzt gesuchten Orte</p>';
       return;
     }
 
@@ -139,19 +142,23 @@ class SearchInputComponent {
         <button class="btn-small" onclick="window.searchComponent.clearRecent()">✕ Löschen</button>
       </div>
       <div class="recent-items">
-        ${this.recentCities.map((city, idx) => `
+        ${this.recentCities
+          .map(
+            (city, idx) => `
           <div class="recent-item" data-city="${city}">
             <span>${city}</span>
             <button class="btn-remove" data-idx="${idx}">✕</button>
           </div>
-        `).join('')}
+        `
+          )
+          .join("")}
       </div>
     `;
 
     // Event-Listener für Recent-Items
-    this.recentList.querySelectorAll('.recent-item').forEach(item => {
-      item.addEventListener('click', (e) => {
-        if (!e.target.classList.contains('btn-remove')) {
+    this.recentList.querySelectorAll(".recent-item").forEach((item) => {
+      item.addEventListener("click", (e) => {
+        if (!e.target.classList.contains("btn-remove")) {
           this.input.value = item.dataset.city;
           this.onSearch();
         }
@@ -159,8 +166,8 @@ class SearchInputComponent {
     });
 
     // Event-Listener für Remove-Buttons
-    this.recentList.querySelectorAll('.btn-remove').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+    this.recentList.querySelectorAll(".btn-remove").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
         this._removeFromRecentCities(parseInt(btn.dataset.idx));
@@ -182,9 +189,21 @@ class SearchInputComponent {
    * Löscht alle Recent-Städte
    */
   clearRecent() {
+    const removedCount = this.recentCities.length;
     this.recentCities = [];
     this._saveRecentCities();
     this._renderRecentCities();
+    if (
+      removedCount > 0 &&
+      typeof window !== "undefined" &&
+      window.logAnalyticsEvent
+    ) {
+      window.logAnalyticsEvent("settings_action", {
+        action: "clear_recent",
+        removedCount,
+      });
+    }
+    return removedCount > 0;
   }
 
   /**
@@ -193,10 +212,10 @@ class SearchInputComponent {
    */
   _loadRecentCities() {
     try {
-      const stored = localStorage.getItem('wetter_recent_cities');
+      const stored = localStorage.getItem("wetter_recent_cities");
       return stored ? JSON.parse(stored) : [];
     } catch (e) {
-      console.warn('Fehler beim Laden von Recent-Städten:', e);
+      console.warn("Fehler beim Laden von Recent-Städten:", e);
       return [];
     }
   }
@@ -207,9 +226,12 @@ class SearchInputComponent {
    */
   _saveRecentCities() {
     try {
-      localStorage.setItem('wetter_recent_cities', JSON.stringify(this.recentCities));
+      localStorage.setItem(
+        "wetter_recent_cities",
+        JSON.stringify(this.recentCities)
+      );
     } catch (e) {
-      console.warn('Fehler beim Speichern von Recent-Städten:', e);
+      console.warn("Fehler beim Speichern von Recent-Städten:", e);
     }
   }
 
@@ -217,7 +239,7 @@ class SearchInputComponent {
    * Setzt Input zurück
    */
   clear() {
-    this.input.value = '';
+    this.input.value = "";
     this.input.focus();
   }
 
@@ -234,11 +256,11 @@ class SearchInputComponent {
    */
   setLoading(loading) {
     if (loading) {
-      this.button.textContent = '⏳ Laden...';
+      this.button.textContent = "⏳ Laden...";
       this.button.disabled = true;
       this.input.disabled = true;
     } else {
-      this.button.textContent = '🔍 Suchen';
+      this.button.textContent = "🔍 Suchen";
       this.button.disabled = false;
       this.input.disabled = false;
     }

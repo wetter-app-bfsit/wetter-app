@@ -46,6 +46,14 @@
       .nav-links a {
         text-decoration: none;
         font-weight: 600;
+        padding: 0.5rem 1rem;
+        border-radius: 999px;
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        background: rgba(15, 23, 42, 0.04);
+      }
+      .nav-links a:hover {
+        background: rgba(0, 123, 255, 0.12);
+        border-color: rgba(0, 123, 255, 0.4);
       }
       #legal-content h1,
       #legal-content h2,
@@ -54,6 +62,21 @@
       }
       pre {
         white-space: pre-wrap;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0f172a;
+          --fg: #e2e8f0;
+          --card: #1e293b;
+          --accent: #38bdf8;
+        }
+        .legal-card {
+          box-shadow: 0 25px 50px rgba(0, 0, 0, 0.65);
+        }
+        .nav-links a {
+          border-color: rgba(226, 232, 240, 0.2);
+          background: rgba(148, 163, 184, 0.12);
+        }
       }
     </style>
   </head>
@@ -64,7 +87,7 @@
     </header>
     <main>
       <nav class="nav-links">
-        <a href="../index.html">Zurück zur App</a>
+        <a href="../index.html" data-back-link>Zurück zur App</a>
         <a href="privacy.html">← Datenschutzerklärung</a>
       </nav>
       <article id="legal-content" class="legal-card">
@@ -87,7 +110,31 @@
           `;
         }
       }
+
+      function resolveAppLink() {
+        const link = document.querySelector("[data-back-link]");
+        if (!link) return;
+        const referrer =
+          document.referrer && !document.referrer.includes("/legal/")
+            ? document.referrer
+            : null;
+        const candidates = [
+          window.APP_BASE_URL,
+          referrer,
+          "../index.html",
+          "../src/index.html",
+          "/index.html",
+          "/src/index.html",
+          "/",
+        ].filter(Boolean);
+        const target = candidates.find((entry) => typeof entry === "string");
+        if (target) {
+          link.setAttribute("href", target);
+        }
+      }
+
       loadDocument();
+      resolveAppLink();
     </script>
   </body>
 </html>

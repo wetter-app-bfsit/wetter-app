@@ -1,8 +1,8 @@
 /* OpenWeatherMap API Integration
- * 
+ *
  * API Documentation: https://openweathermap.org/api
  * Requires free API key from https://openweathermap.org/api
- * 
+ *
  * Response structure:
  * - current: Current weather conditions
  * - hourly: Hourly forecast (next 48 hours in free tier)
@@ -11,9 +11,9 @@
 
 class OpenWeatherMapAPI {
   constructor() {
-    this.baseUrl = 'https://api.openweathermap.org/data/2.5/onecall';
+    this.baseUrl = "https://api.openweathermap.org/data/2.5/onecall";
     this.timeout = 5000;
-    this.name = 'OpenWeatherMap';
+    this.name = "OpenWeatherMap";
   }
 
   /**
@@ -24,16 +24,20 @@ class OpenWeatherMapAPI {
    * @param {string} units - Temperature units ('metric', 'imperial', 'standard')
    * @returns {Promise<object>} - { current, hourly, daily, source: 'openweathermap' } or error object
    */
-  async fetchWeather(latitude, longitude, apiKey, units = 'metric') {
+  async fetchWeather(latitude, longitude, apiKey, units = "metric") {
     try {
-      // Validate API key
-      if (!apiKey || typeof apiKey !== 'string' || apiKey.trim().length === 0) {
-        console.warn('⚠️ OpenWeatherMap: API key missing or invalid');
+      const keyCheck = this._validateApiKey(apiKey);
+      if (!keyCheck.valid) {
         return {
-          error: 'OpenWeatherMap API key erforderlich',
-          source: 'openweathermap'
+          error: keyCheck.message,
+          code: keyCheck.code,
+          state: keyCheck.state,
+          detail: keyCheck.detail,
+          statusMessage: keyCheck.statusMessage,
+          source: "openweathermap",
         };
       }
+      const sanitizedKey = keyCheck.key;
 
       // Validate coordinates
       const coordCheck = validateCoordinates(latitude, longitude);
@@ -45,9 +49,9 @@ class OpenWeatherMapAPI {
       const params = new URLSearchParams({
         lat: latitude.toFixed(4),
         lon: longitude.toFixed(4),
-        appid: apiKey.trim(),
+        appid: sanitizedKey,
         units: units,
-        exclude: 'minutely' // Exclude minutely data to reduce payload
+        exclude: "minutely", // Exclude minutely data to reduce payload
       });
 
       const url = `${this.baseUrl}?${params.toString()}`;
@@ -74,18 +78,21 @@ class OpenWeatherMapAPI {
         } catch (err) {
           attempt += 1;
           const isLast = attempt >= maxAttempts;
-          const msg = (err && err.message) ? err.message : '';
+          const msg = err && err.message ? err.message : "";
 
           // Don't retry on client errors (401, 403, 404, 429)
-          const isClientError = /HTTP Fehler 4\d\d|401|403|404|429|API key|Invalid API/.test(msg);
+          const isClientError =
+            /HTTP Fehler 4\d\d|401|403|404|429|API key|Invalid API/.test(msg);
           if (isClientError || isLast) {
             throw err;
           }
 
           // Exponential backoff for retries
           const waitMs = 200 * Math.pow(2, attempt - 1);
-          await new Promise(r => setTimeout(r, waitMs));
-          console.warn(`OpenWeatherMap Versuch ${attempt} fehlgeschlagen, erneut in ${waitMs}ms...`);
+          await new Promise((r) => setTimeout(r, waitMs));
+          console.warn(
+            `OpenWeatherMap Versuch ${attempt} fehlgeschlagen, erneut in ${waitMs}ms...`
+          );
         }
       }
 
@@ -96,18 +103,26 @@ class OpenWeatherMapAPI {
       const formatted = this._formatWeatherData(data);
 
       return {
+        data: formatted,
         current: formatted.current,
         hourly: formatted.hourly,
         daily: formatted.daily,
         fromCache: false,
         duration,
-        source: 'openweathermap'
+        state: "online",
+        statusMessage: `Live · ${duration}ms`,
+        source: "openweathermap",
       };
     } catch (error) {
-      console.error(`❌ OpenWeatherMap Fehler: ${error.message}`);
+      const classified = this._classifyError(error);
+      console.error(`❌ OpenWeatherMap Fehler: ${classified.message}`);
       return {
-        error: error.message,
-        source: 'openweathermap'
+        error: classified.message,
+        code: classified.code,
+        state: classified.state,
+        detail: classified.detail,
+        statusMessage: classified.statusMessage,
+        source: "openweathermap",
       };
     }
   }
@@ -120,7 +135,7 @@ class OpenWeatherMapAPI {
    */
   _validateResponse(data) {
     if (!data) {
-      return { valid: false, error: 'Keine Daten von OpenWeatherMap erhalten' };
+      return { valid: false, error: "Keine Daten von OpenWeatherMap erhalten" };
     }
 
     if (data.cod && data.cod !== 200) {
@@ -131,15 +146,24 @@ class OpenWeatherMapAPI {
     }
 
     if (!data.current) {
-      return { valid: false, error: 'Ungültige OpenWeatherMap Antwort: Keine aktuellen Daten' };
+      return {
+        valid: false,
+        error: "Ungültige OpenWeatherMap Antwort: Keine aktuellen Daten",
+      };
     }
 
     if (!Array.isArray(data.hourly)) {
-      return { valid: false, error: 'Ungültige OpenWeatherMap Antwort: Keine Stundendaten' };
+      return {
+        valid: false,
+        error: "Ungültige OpenWeatherMap Antwort: Keine Stundendaten",
+      };
     }
 
     if (!Array.isArray(data.daily)) {
-      return { valid: false, error: 'Ungültige OpenWeatherMap Antwort: Keine Tagesdaten' };
+      return {
+        valid: false,
+        error: "Ungültige OpenWeatherMap Antwort: Keine Tagesdaten",
+      };
     }
 
     return { valid: true, error: null };
@@ -159,27 +183,27 @@ class OpenWeatherMapAPI {
       pressure: data.current.pressure,
       clouds: data.current.clouds || 0,
       weather_code: this._mapWeatherCode(data.current.weather[0]?.main),
-      description: data.current.weather[0]?.description || 'Unbekannt',
-      timestamp: data.current.dt * 1000
+      description: data.current.weather[0]?.description || "Unbekannt",
+      timestamp: data.current.dt * 1000,
     };
 
-    const hourly = (data.hourly || []).slice(0, 24).map(hour => ({
+    const hourly = (data.hourly || []).slice(0, 24).map((hour) => ({
       temp: hour.temp,
       precipitation: (hour.pop || 0) * 100, // Probability of precipitation (0-100)
-      rain_volume: hour.rain?.['1h'] || 0,
+      rain_volume: hour.rain?.["1h"] || 0,
       wind_speed: hour.wind_speed,
       timestamp: hour.dt * 1000,
-      weather_code: this._mapWeatherCode(hour.weather[0]?.main)
+      weather_code: this._mapWeatherCode(hour.weather[0]?.main),
     }));
 
-    const daily = (data.daily || []).slice(0, 7).map(day => ({
+    const daily = (data.daily || []).slice(0, 7).map((day) => ({
       temp_min: day.temp.min,
       temp_max: day.temp.max,
       precipitation: (day.pop || 0) * 100,
       rain_volume: day.rain || 0,
       wind_speed: day.wind_speed,
-      date: new Date(day.dt * 1000).toISOString().split('T')[0],
-      weather_code: this._mapWeatherCode(day.weather[0]?.main)
+      date: new Date(day.dt * 1000).toISOString().split("T")[0],
+      weather_code: this._mapWeatherCode(day.weather[0]?.main),
     }));
 
     return { current, hourly, daily };
@@ -198,17 +222,24 @@ class OpenWeatherMapAPI {
 
     const desc = owmDescription.toLowerCase();
 
-    if (desc === 'clear') return 0;
-    if (desc === 'clouds') return 3;
-    if (desc === 'drizzle') return 51;
-    if (desc === 'rain') return 61;
-    if (desc === 'thunderstorm') return 95;
-    if (desc === 'snow') return 71;
-    if (desc === 'mist' || desc === 'smoke' || desc === 'haze' || 
-        desc === 'dust' || desc === 'fog' || desc === 'sand' || desc === 'ash') {
+    if (desc === "clear") return 0;
+    if (desc === "clouds") return 3;
+    if (desc === "drizzle") return 51;
+    if (desc === "rain") return 61;
+    if (desc === "thunderstorm") return 95;
+    if (desc === "snow") return 71;
+    if (
+      desc === "mist" ||
+      desc === "smoke" ||
+      desc === "haze" ||
+      desc === "dust" ||
+      desc === "fog" ||
+      desc === "sand" ||
+      desc === "ash"
+    ) {
       return 45; // Foggy
     }
-    if (desc === 'tornado') return 95;
+    if (desc === "tornado") return 95;
 
     return 3; // Default fallback
   }
@@ -228,27 +259,120 @@ class OpenWeatherMapAPI {
         humidity: `${data.current.humidity}%`,
         wind: `${data.current.wind_speed.toFixed(1)} m/s`,
         pressure: `${data.current.pressure} hPa`,
-        description: data.current.description
+        description: data.current.description,
       },
-      hourly: data.hourly.slice(0, limit).map(h => ({
-        time: new Date(h.timestamp).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+      hourly: data.hourly.slice(0, limit).map((h) => ({
+        time: new Date(h.timestamp).toLocaleTimeString("de-DE", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
         temp: `${h.temp.toFixed(1)}°`,
         wind: `${h.wind_speed.toFixed(1)} m/s`,
         precipitation: `${h.precipitation.toFixed(0)}%`,
-        code: h.weather_code
+        code: h.weather_code,
       })),
-      daily: data.daily.map(d => ({
-        date: new Date(d.date).toLocaleDateString('de-DE'),
+      daily: data.daily.map((d) => ({
+        date: new Date(d.date).toLocaleDateString("de-DE"),
         temp_min: `${d.temp_min.toFixed(1)}°`,
         temp_max: `${d.temp_max.toFixed(1)}°`,
         precipitation: `${d.precipitation.toFixed(0)}%`,
-        code: d.weather_code
-      }))
+        code: d.weather_code,
+      })),
     };
+  }
+
+  _validateApiKey(apiKey) {
+    const trimmed = typeof apiKey === "string" ? apiKey.trim() : "";
+    const guidance = this._getKeyGuidance();
+
+    if (!trimmed) {
+      return {
+        valid: false,
+        code: "missing-key",
+        state: "missing-key",
+        message: "OpenWeatherMap API-Key erforderlich",
+        detail: guidance,
+        statusMessage: "API-Key fehlt",
+      };
+    }
+
+    if (!/^[A-Za-z0-9]{32,64}$/.test(trimmed)) {
+      return {
+        valid: false,
+        code: "invalid-key",
+        state: "invalid-key",
+        message:
+          "OpenWeatherMap API-Key scheint unvollständig (32 Zeichen erwartet)",
+        detail: `${guidance} · Format: 32 Zeichen (hexadezimal)`,
+        statusMessage: "API-Key prüfen",
+      };
+    }
+
+    return { valid: true, key: trimmed };
+  }
+
+  _classifyError(error) {
+    const rawMessage = error?.message || "Unbekannter Fehler";
+    const normalized = rawMessage.toLowerCase();
+    const guidance = this._getKeyGuidance();
+
+    if (/401|unauthorized|invalid api key|appid/.test(normalized)) {
+      return {
+        message: "OpenWeatherMap: API-Key ungültig oder blockiert (401)",
+        detail: `${guidance} Falls du gerade einen neuen Key erstellt hast, beachte die Aktivierungszeit von ca. 15 Minuten. (Antwort: ${rawMessage})`,
+        code: "invalid-key",
+        state: "invalid-key",
+        statusMessage: "API-Key ungültig",
+      };
+    }
+
+    if (/403|forbidden/.test(normalized)) {
+      return {
+        message: "OpenWeatherMap: Zugriff verweigert (403)",
+        detail: `${guidance} Prüfe auch, ob die One Call API für deinen Account freigeschaltet ist.`,
+        code: "invalid-key",
+        state: "invalid-key",
+        statusMessage: "Zugriff verweigert",
+      };
+    }
+
+    if (/429/.test(normalized) || /rate limit/.test(normalized)) {
+      return {
+        message: "OpenWeatherMap: Rate Limit erreicht (429)",
+        detail:
+          "Bitte warte eine Minute oder reduziere die Anzahl der Anfragen. Ein Upgrade des Plans entfernt dieses Limit.",
+        code: "rate-limit",
+        state: "warning",
+        statusMessage: "Rate Limit",
+      };
+    }
+
+    if (/timeout/.test(normalized) || /aborted/.test(normalized)) {
+      return {
+        message: "OpenWeatherMap: Anfrage hat zu lange gedauert",
+        detail:
+          "Netzwerk langsam oder Server ausgelastet. Versuch es gleich erneut.",
+        code: "timeout",
+        state: "warning",
+        statusMessage: "Zeitüberschreitung",
+      };
+    }
+
+    return {
+      message: `OpenWeatherMap: ${rawMessage}`,
+      detail: rawMessage,
+      code: "error",
+      state: "error",
+      statusMessage: "Fehler",
+    };
+  }
+
+  _getKeyGuidance() {
+    return "Öffne ⚙️ Einstellungen → Integrationen & APIs → Optionale API Keys und speichere deinen persönlichen OpenWeatherMap-Key.";
   }
 }
 
 // Export the class
-if (typeof module !== 'undefined' && module.exports) {
+if (typeof module !== "undefined" && module.exports) {
   module.exports = OpenWeatherMapAPI;
 }

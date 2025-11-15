@@ -13,12 +13,14 @@ Eine moderne, responsive PWA-Wetter-Anwendung mit Dual-API-Support, Offline-Funk
 - **🔔 Push-Benachrichtigungen**: Lokaler VAPID-basierter Push-Server inkl. Dashboard
 - **⭐ Favoriten**: Speichern, Reorder, Undo-Funktion
 - **🌡️ Einheiten-Toggle**: Temperatur (°C/°F) und Wind (m/s, km/h, mph) instant auf alle Komponenten angewendet
-- **🗺️ Wetterkarten** (optional): Leaflet + OpenStreetMap mit optionalen Overlay-Kacheln
+- **🗺️ Wetterkarten** (optional): Leaflet + OpenStreetMap mit automatisch aktivierten RainViewer-Radar & OpenWeatherMap-Overlays (inkl. Status-Pills)
 - **🚨 Wetterwarnungen**: Integration von MeteoAlarm/CAP-Feeds (kostenlos, kein Key)
 - **📈 Historische Daten**: Letzte 7 Tage Temperaturtrend (Meteostat/Open-Meteo)
+- **📅 Prognose-Center**: 7-Tage-Kacheln mit einklappbaren Stunden-Details plus "Heute"-Timeline
 - **🌙 Hell/Dunkel-Modus**: CSS-Variablen-basiertes Theming
 - **♿ Barrierefreiheit**: WCAG 2.1 AA Kontrast, ARIA-Labels, Tastatur-Navigation
 - **🌐 Mehrsprachigkeit** (i18n): Deutsch, Englisch (erweiterbar)
+- **📊 Analytics & Telemetrie**: Opt-in Dashboard mit Events für Suchanfragen, API-Calls, Cache-Hits, Favoriten und Settings-Aktionen inkl. JSON-Export
 
 ## Quick Start
 
@@ -98,6 +100,8 @@ Dokumentation: https://docs/api-documentation.md
 | **Meteostat**      | Historische Stationsdaten             | https://meteostat.net/                     | ✓                |
 | **VisualCrossing** | Historische & Alternative Vorhersagen | https://www.visualcrossing.com/weather-api | ✓ (Trial)        |
 
+> ℹ️ Ein gültiger OpenWeatherMap-Key ist bereits vorinstalliert. Du kannst ihn im Einstellungsdialog jederzeit durch deinen eigenen ersetzen – hinterlegte Keys in localStorage haben immer Vorrang.
+
 #### Keys Konfigurieren
 
 1. **Umgebungsvariablen** (für Backend/Push-Server):
@@ -111,6 +115,24 @@ Dokumentation: https://docs/api-documentation.md
 2. **In der App** (Frontend):
    - **Einstellungen** → **API-Keys**
    - Keys eingeben (werden lokal in localStorage gespeichert)
+
+> ℹ️ **OpenWeatherMap liefert keinen Demo-Key mehr mit**. Trage deinen persönlichen Key im Einstellungsdialog ein, damit optionale Vorhersagen und Karten-Overlays funktionieren.
+
+##### (Optional) Default-Keys per Runtime bereitstellen
+
+Falls du beim Hosten der App eigene Demo-Keys ausrollen möchtest, kannst du vor `app.js` folgenden Snippet einbetten (z. B. in `index.html`):
+
+```html
+<script>
+  window.__APP_DEFAULT_API_KEYS = {
+    openweathermap: "<dein-key>",
+    visualcrossing: "<optional>",
+    meteostat: "<optional>",
+  };
+</script>
+```
+
+Die Keys werden nur gesetzt, wenn der Nutzer noch keinen eigenen Eintrag gespeichert hat.
 
 ## npm Scripts
 
@@ -317,6 +339,7 @@ Siehe **`docs/TESTING.md`** für detaillierte QA-Szenarien:
 - ✅ Weather Alerts (MeteoAlarm CAP Feeds)
 - ✅ Historical Data & Charts (Canvas-basierte Visualisierung)
 - ✅ Analytics (Opt-in Data Collection)
+- ✅ Cache & Verlauf Buttons (Leeren, Undo, Analytics-Logging)
 - ✅ Accessibility (WCAG 2.1 AA, Keyboard Nav, Screen Reader)
 - ✅ Error Handling (Network, Invalid Input, Rate Limiting)
 - ✅ Cross-Browser (Chrome, Firefox, Safari, Edge)

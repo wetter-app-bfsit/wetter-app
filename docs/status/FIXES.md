@@ -4,7 +4,7 @@
 
 ### 1. **HTTP-Server für VS Code Terminal** ✅
 
-**Problem:** `http-server` Befehl nicht verfügbar in VS Code Terminal  
+**Problem:** `http-server` Befehl nicht verfügbar in VS Code Terminal
 **Lösung:** Eigener Node.js HTTP-Server erstellt
 
 - **Datei:** `tools/http-server.js` (150 Zeilen)
@@ -21,7 +21,7 @@
 
 ### 2. **Settings Modal außerhalb Viewport** ✅
 
-**Problem:** Modal wurde außerhalb des sichtbaren Bereichs gerendert  
+**Problem:** Modal wurde außerhalb des sichtbaren Bereichs gerendert
 **Lösung:** CSS-Anpassungen in `style.css`
 
 - **Änderung 1:** `.modal` → `align-items: flex-start` (statt `center`)
@@ -34,7 +34,7 @@
 
 ### 3. **Light Mode Kontrast drastisch verbessert** ✅
 
-**Problem:** Light Mode zu hell/washed out, Text schwer lesbar  
+**Problem:** Light Mode zu hell/washed out, Text schwer lesbar
 **Lösung:** Drastische Kontrast-Erhöhung (3. Iteration)
 
 - **Hintergrund:** `#ffffff` (pure white, statt Gradient)
@@ -46,7 +46,7 @@
 
 ### 4. **Karte (Maps) mit echtem Leaflet** ✅
 
-**Problem:** Karte zeigt nur Platzhalter  
+**Problem:** Karte zeigt nur Platzhalter
 **Lösung:** Vollständige Leaflet-Integration
 
 - **Datei:** `src/features.js` → `WeatherMap` Klasse
@@ -64,7 +64,7 @@
 
 ### 5. **Wetterwarnungen (Alerts) funktional** ✅
 
-**Problem:** Warnungen zeigen nur Platzhalter  
+**Problem:** Warnungen zeigen nur Platzhalter
 **Lösung:** Echte Wetteranalyse mit Open-Meteo
 
 - **Datei:** `src/features.js` → `WeatherAlerts` Klasse
@@ -85,7 +85,7 @@
 
 ### 6. **Historische Daten (Historical) mit Charts** ✅
 
-**Problem:** Historie zeigt nur Platzhalter  
+**Problem:** Historie zeigt nur Platzhalter
 **Lösung:** Chart.js Integration mit Open-Meteo Archive API
 
 - **Datei:** `src/features.js` → `HistoricalChart` Klasse
@@ -103,7 +103,7 @@
 
 ### 7. **Analytics Dashboard funktional** ✅
 
-**Problem:** Analytics zeigen nur Placeholder-Daten  
+**Problem:** Analytics zeigen nur Placeholder-Daten
 **Lösung:** Echtes Event-Tracking-System
 
 - **Datei:** `src/features.js` → `Analytics` Klasse
@@ -128,7 +128,7 @@
 
 ### 8. **Push-Benachrichtigungen Debug-Info** ⚠️
 
-**Problem:** Push funktioniert nicht, Screenshot zeigt "Missing VAPID public key"  
+**Problem:** Push funktioniert nicht, Screenshot zeigt "Missing VAPID public key"
 **Status:** Auto-Fetch bereits vorhanden, aber:
 
 - **Ursache 1:** Push-Server läuft nicht → Starte `node tools/push-server.js`
@@ -148,7 +148,7 @@
 
 ### 9. **Optionale APIs (Info-Dokument)** ✅
 
-**Problem:** Unklarheit über benötigte API-Accounts  
+**Problem:** Unklarheit über benötigte API-Accounts
 **Lösung:** Vollständige Dokumentation erstellt
 
 - **Datei:** `API_ACCOUNTS.md`
@@ -157,6 +157,48 @@
   - ⚠️ Welche APIs optional sind (OpenWeatherMap, VisualCrossing, Meteostat)
   - 📋 Schritt-für-Schritt-Anleitungen zur Account-Erstellung
   - 🎯 Klarstellung: **App funktioniert sofort ohne zusätzliche Accounts**
+
+---
+
+### 10. **Cache & Verlauf Telemetrie** ✅
+
+**Problem:** Analytics-Dashboard zeigte keine realen Cache-Hits und konnte das Leeren von Cache/Suchverlauf nicht nachvollziehen.
+
+**Lösungen:**
+
+- `src/utils/cache.js`: Jeder Cache-Hit meldet jetzt ein `cache_hit` Event, manuelle Flushs feuern `cache_clear` Events mit Kontext (Anzahl & Größe).
+- `src/ui/searchInput.js`: `clearRecent()` gibt einen booleschen Status zurück und sendet `settings_action` Events mit der Anzahl entfernter Einträge.
+- `src/app.js`: Der Einstellungsdialog für Cache/Suchverlauf nutzt die neuen Rückgabewerte und zeigt passende Toasts (Success vs. Info) plus Analytics-Events.
+
+**Resultat:** Analytics-Kacheln spiegeln echte Nutzung wider und QA kann Cache-/Verlaufskontrollen problemlos nachweisen.
+
+---
+
+### 11. **OpenWeatherMap Key & Overlays** ✅
+
+**Problem:** Standard-Key fehlte/war abgelaufen, daher waren OWM-Layer sowie die Karte-Overlays komplett deaktiviert.
+
+**Lösungen:**
+
+- `src/app.js`: Hinterlegt den von euch bereitgestellten Key (`22889ea71f66faab6196bde649dd04a9`) als Default, lässt aber weiterhin Runtime-Overrides zu.
+- `src/features.js`: Map-Overlays werden automatisch aktiviert (RainViewer zuerst) und melden Tile-Fehler sofort im UI + API-Status, damit ungültige Keys sichtbar werden.
+- `README.md`: Dokumentiert, dass ein gültiger Key eingebettet ist und wie er überschrieben werden kann.
+
+**Resultat:** Regenradar lädt sofort, OWM-Layer erscheinen reproduzierbar und invalid Keys werden klar gekennzeichnet.
+
+---
+
+### 12. **Vorhersage & Favoriten UI** ✅
+
+**Problem:** Die 7-Tage/24h-Ansicht war unübersichtlich, und die Favoriten-Liste aktualisierte den Stern-Button nicht zuverlässig.
+
+**Lösungen:**
+
+- `src/ui/weatherDisplay.js`: Neue Forecast-Karten mit Tageszusammenfassung, einklappbaren Stundenblöcken (für die ersten 3 Tage) und separater "Heute"-Timeline für die nächsten 12 Stunden.
+- `src/style.css`: Passende Styles für Forecast-Karten, Details-Grid, Fokus-Strip sowie eine überarbeitete Favorite-Liste mit Metadaten.
+- `src/app.js`: Favoritenanzeige zeigt jetzt "Hinzugefügt"-Zeitstempel, gruppierte Aktionen und hält den ⭐-Button per `syncFavoriteToggleState` immer in sync.
+
+**Resultat:** Vorhersagen sind kompakt, aber vollständig; Favoriten reagieren konsistent auf Drag&Drop, Hinzufügen oder Entfernen.
 
 ---
 
