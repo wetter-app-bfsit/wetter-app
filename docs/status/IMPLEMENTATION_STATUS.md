@@ -116,56 +116,16 @@
 
 ---
 
-## ⏳ REMAINING TASKS
+## ✅ STATUS
 
-### Task 3: 7-day Forecast UI with Hourly Details
-
-- Group hourly data by calendar day
-- Render 7-day overview
-- Expand first 3 days to show hourly scrollers
-- Per-day expand/collapse toggle
-- Must work with unit conversion
-
-### Task 4: Units Toggle Global Enforcement
-
-- Ensure all UI pieces update instantly:
-  - Current weather
-  - Hourly forecast
-  - Daily forecast
-  - Sources comparison
-- Temperature: °C ↔ °F conversion
-- Wind: m/s ↔ km/h ↔ mph conversion
-- Persist preference in localStorage
-
-### Task 8: PWA Improvements & Advanced Caching
-
-- Service Worker enhancements:
-  - Background sync for failed API calls
-  - Periodic sync to refresh favorites
-  - Stale-while-revalidate strategy
-  - Improved cache versioning
-  - Push notification handler
-
-### Task 13: Full Smoke Tests & QA
-
-- Location search end-to-end
-- Units toggle on all components
-- Favorite add/remove/reorder
-- Push notification subscribe (with local server)
-- Dark/light mode toggle
-- Language switching
-- Offline mode verification
-
----
-
-## IMPLEMENTATION STATUS CHART
+Alle Feature-Tasks, PWA-Optimierungen und QA-Suites sind abgeschlossen. Die frühere Restliste (Tasks 3, 4, 8, 13) ist abgearbeitet – die App liefert nun die 7-Tage-Vorhersage mit stündlichen Detailansichten, globale Einheitentoggles, erweiterte Service-Worker-Caches sowie vollständige Smoke-Tests.
 
 ```
-[████████████████████░░░░░] ~80% Complete
+[██████████████████████████] 100% Complete
 
-Completed:     Documentation, Accessibility, APIs, Components, i18n, Analytics, Testing
-In Progress:   (Ready to implement - no blockers)
-Not Started:   (Waiting for Tasks 3 & 4, then Task 8, then final QA)
+Completed: Documentation, Accessibility, APIs, Components, i18n, Analytics, Testing, PWA, QA
+In Progress: —
+Not Started: —
 ```
 
 ---

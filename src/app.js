@@ -248,13 +248,22 @@ function initializeApiStatusDefaults() {
     const message =
       provider.requiresKey && !hasKey
         ? "API-Key erforderlich"
-        : provider.note || "Noch nicht geladen";
+        : provider.note ||
+          (provider.requiresKey
+            ? "Bereit – Key gespeichert"
+            : "Noch nicht geladen");
+    const detail = provider.requiresKey
+      ? hasKey
+        ? `🔐 Key gespeichert${provider.note ? ` · ${provider.note}` : ""}`
+        : `Kein Key hinterlegt${provider.note ? ` · ${provider.note}` : ""}`
+      : provider.note || "Bereit";
     return {
       id: provider.id,
       name: provider.name,
       tag: provider.tag,
       state,
       message,
+      detail,
     };
   });
   renderApiStatusPanel();
@@ -348,6 +357,79 @@ function buildApiStatusMessage(source) {
   return source.error || "Fehler";
 }
 
+function providerRequiresKey(providerId) {
+  const provider = API_PROVIDERS.find((p) => p.id === providerId);
+  return provider ? !!provider.requiresKey : false;
+}
+
+function providerNoteSuffix(providerId) {
+  const provider = API_PROVIDERS.find((p) => p.id === providerId);
+  return provider && provider.note ? ` · ${provider.note}` : "";
+}
+
+function providerKeyInputId(providerId) {
+  switch (providerId) {
+    case "openweathermap":
+      return "openweathermap-key";
+    case "visualcrossing":
+      return "visualcrossing-key";
+    case "meteostat":
+      return "meteostat-key";
+    default:
+      return null;
+  }
+}
+
+function notifyKeyIssue(providerId, errorMessage) {
+  const issue = classifyProviderState(providerId, errorMessage);
+  if (!issue) return false;
+  const provider = API_PROVIDERS.find((p) => p.id === providerId);
+  const inputId = providerKeyInputId(providerId);
+  showWarning(issue.message, null, {
+    title: `${provider?.name || providerId} API`,
+    meta: errorMessage,
+    actions: inputId
+      ? [
+          {
+            label: "Einstellungen öffnen",
+            kind: "primary",
+            onClick: () => openSettingsModal(inputId),
+          },
+        ]
+      : undefined,
+  });
+  return true;
+}
+
+function classifyProviderState(providerId, errorMessage) {
+  if (!providerId || !errorMessage) return null;
+  if (!providerRequiresKey(providerId)) return null;
+
+  const normalized = errorMessage.toLowerCase();
+  const invalidKeyPatterns =
+    /invalid api key|unauthorized|401|forbidden|not authorized|ung(?:u|ü)ltig/;
+  const missingKeyPatterns =
+    /api key required|provide an api key|missing api key|no api key|key erforderlich|fehlender key|appid/;
+
+  if (invalidKeyPatterns.test(normalized)) {
+    return {
+      state: "invalid-key",
+      message: "Ungültiger API-Key – bitte neu speichern",
+      detail: errorMessage,
+    };
+  }
+
+  if (missingKeyPatterns.test(normalized)) {
+    return {
+      state: "missing-key",
+      message: "API-Key erforderlich",
+      detail: errorMessage,
+    };
+  }
+
+  return null;
+}
+
 function syncProviderKeyState(providerId) {
   const provider = API_PROVIDERS.find((p) => p.id === providerId);
   if (!provider) return;
@@ -364,9 +446,15 @@ function syncProviderKeyState(providerId) {
   if (provider.requiresKey && !hasKey) {
     payload.state = "missing-key";
     payload.message = "API-Key erforderlich";
+    payload.detail = `Kein Key hinterlegt${
+      provider.note ? ` · ${provider.note}` : ""
+    }`;
   } else {
     payload.state = "pending";
     payload.message = provider.note || "Bereit – Key gespeichert";
+    payload.detail = provider.requiresKey
+      ? `🔐 Key gespeichert${provider.note ? ` · ${provider.note}` : ""}`
+      : provider.note;
   }
 
   updateApiStatusStore([payload]);
@@ -397,7 +485,7 @@ function buildRenderData(rawData, units) {
   }
   try {
     if (rawData.openMeteo) {
-      const hourly = openMeteoAPI.formatHourlyData(rawData.openMeteo, 48);
+      const hourly = openMeteoAPI.formatHourlyData(rawData.openMeteo, 168);
       const daily = openMeteoAPI.formatDailyData(rawData.openMeteo, 7);
 
       // Convert temps and wind per units
@@ -546,7 +634,7 @@ function renderFromRenderData() {
     // hourly and forecast for OpenMeteo
     if (appState.renderData.openMeteo) {
       weatherDisplay.displayHourly(
-        appState.renderData.openMeteo.hourly,
+        appState.renderData.openMeteo.hourly.slice(0, 24),
         "Open-Meteo"
       );
       weatherDisplay.displayForecast(appState.renderData.openMeteo.daily);
@@ -686,7 +774,13 @@ async function fetchWeatherData(lat, lon) {
           success: false,
           error: openWeatherMapResult.error,
         });
-        showWarning(`OpenWeatherMap: ${openWeatherMapResult.error}`);
+        const handled = notifyKeyIssue(
+          "openweathermap",
+          openWeatherMapResult.error
+        );
+        if (!handled) {
+          showWarning(`OpenWeatherMap: ${openWeatherMapResult.error}`);
+        }
       }
     } catch (e) {
       console.warn("OpenWeatherMap Fehler:", e.message);
@@ -696,6 +790,10 @@ async function fetchWeatherData(lat, lon) {
         success: false,
         error: e.message || "Unbekannter Fehler",
       });
+      const handled = notifyKeyIssue("openweathermap", e.message);
+      if (!handled) {
+        showWarning(`OpenWeatherMap: ${e?.message || "Unbekannter Fehler"}`);
+      }
     }
   }
 
@@ -722,7 +820,13 @@ async function fetchWeatherData(lat, lon) {
           success: false,
           error: visualCrossingResult.error,
         });
-        showWarning(`VisualCrossing: ${visualCrossingResult.error}`);
+        const handled = notifyKeyIssue(
+          "visualcrossing",
+          visualCrossingResult.error
+        );
+        if (!handled) {
+          showWarning(`VisualCrossing: ${visualCrossingResult.error}`);
+        }
       }
     } catch (e) {
       console.warn("VisualCrossing Fehler:", e.message);
@@ -732,21 +836,44 @@ async function fetchWeatherData(lat, lon) {
         success: false,
         error: e.message || "Unbekannter Fehler",
       });
+      const handled = notifyKeyIssue("visualcrossing", e.message);
+      if (!handled) {
+        showWarning(`VisualCrossing: ${e?.message || "Unbekannter Fehler"}`);
+      }
     }
   }
 
   if (sources.length) {
     const statusPayload = sources
       .filter((src) => src.id)
-      .map((src) => ({
-        id: src.id,
-        name: src.name,
-        state: src.skipped ? "skipped" : src.success ? "online" : "error",
-        message: buildApiStatusMessage(src),
-        duration: src.duration,
-        fromCache: src.fromCache,
-        detail: !src.success && src.error ? src.error : "",
-      }));
+      .map((src) => {
+        const classification = classifyProviderState(src.id, src.error);
+        const state =
+          src.state ||
+          classification?.state ||
+          (src.skipped ? "skipped" : src.success ? "online" : "error");
+        const message =
+          classification?.message ||
+          src.statusMessage ||
+          buildApiStatusMessage(src);
+        const detail =
+          classification?.detail ||
+          src.statusDetail ||
+          (!src.success && src.error
+            ? src.error
+            : providerRequiresKey(src.id)
+            ? `🔐 Key aktiv${providerNoteSuffix(src.id)}`
+            : "");
+        return {
+          id: src.id,
+          name: src.name,
+          state,
+          message,
+          duration: src.duration,
+          fromCache: src.fromCache,
+          detail,
+        };
+      });
     updateApiStatusStore(statusPayload);
   }
 
@@ -817,7 +944,7 @@ function displayWeatherResults(location, weatherData) {
     }
 
     // Zeige 5-Tage Vorhersage
-    const dailyData = openMeteoAPI.formatDailyData(openMeteo, 5);
+    const dailyData = openMeteoAPI.formatDailyData(openMeteo, 7);
     weatherDisplay.displayForecast(dailyData);
   }
 
@@ -846,7 +973,11 @@ async function loadWeather(city) {
     // Suche Ort
     const location = await searchLocation(city);
     appState.currentCity = location.city;
-    appState.currentCoordinates = { lat: location.lat, lon: location.lon };
+    appState.currentCoordinates = {
+      lat: location.lat,
+      lon: location.lon,
+      lng: location.lon,
+    };
 
     // Lade Wetterdaten
     const weatherData = await fetchWeatherData(location.lat, location.lon);
@@ -971,15 +1102,11 @@ function initApp() {
 
   // Settings Button - Toggle Modal
   const settingsBtn = document.getElementById("settingsBtn");
-  const settingsModal = document.getElementById("settings-modal");
   const modalOverlay = document.getElementById("modal-overlay");
 
-  if (settingsBtn && settingsModal) {
+  if (settingsBtn) {
     settingsBtn.addEventListener("click", () => {
-      settingsModal.classList.add("active");
-      settingsModal.setAttribute("aria-hidden", "false");
-      modalOverlay.classList.add("active");
-      document.body.style.overflow = "hidden";
+      openSettingsModal();
     });
   }
 
@@ -988,25 +1115,14 @@ function initApp() {
   closeModalBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
       const modalId = btn.dataset.close;
-      const modal = document.getElementById(modalId);
-      if (modal) {
-        modal.classList.remove("active");
-        modal.setAttribute("aria-hidden", "true");
-        modalOverlay.classList.remove("active");
-        document.body.style.overflow = "";
-      }
+      closeModal(modalId);
     });
   });
 
   // Close modal on overlay click
   if (modalOverlay) {
     modalOverlay.addEventListener("click", () => {
-      document.querySelectorAll(".modal.active").forEach((modal) => {
-        modal.classList.remove("active");
-        modal.setAttribute("aria-hidden", "true");
-      });
-      modalOverlay.classList.remove("active");
-      document.body.style.overflow = "";
+      closeAllModals();
     });
   }
 
@@ -1045,21 +1161,27 @@ function initApp() {
 
         // Initialize features on first tab switch
         if (tabName === "maps" && appState.currentCoordinates) {
+          const lon =
+            appState.currentCoordinates.lon ?? appState.currentCoordinates.lng;
           weatherMap.init(
             appState.currentCoordinates.lat,
-            appState.currentCoordinates.lng,
+            lon,
             appState.currentCity || "Standort"
           );
         } else if (tabName === "alerts" && appState.currentCoordinates) {
+          const lon =
+            appState.currentCoordinates.lon ?? appState.currentCoordinates.lng;
           weatherAlerts.fetchAlerts(
             appState.currentCoordinates.lat,
-            appState.currentCoordinates.lng,
+            lon,
             appState.currentCity || "Standort"
           );
         } else if (tabName === "historical" && appState.currentCoordinates) {
+          const lon =
+            appState.currentCoordinates.lon ?? appState.currentCoordinates.lng;
           historicalChart.fetchAndRender(
             appState.currentCoordinates.lat,
-            appState.currentCoordinates.lng,
+            lon,
             appState.currentCity || "Standort"
           );
         } else if (tabName === "analytics") {
@@ -1184,9 +1306,7 @@ function initApp() {
         }
       } catch (e) {
         console.warn("Push toggle error", e);
-        showWarning(
-          "Push konnte nicht umgeschaltet werden: " + (e && e.message)
-        );
+        handlePushToggleError(e);
       }
     });
   }
@@ -1557,6 +1677,103 @@ async function unsubscribeFromPush() {
   localStorage.removeItem("wetter_push_subscription");
   localStorage.setItem("wetter_push_enabled", "false");
   return true;
+}
+
+function handlePushToggleError(error) {
+  const message = error?.message || "Unbekannter Fehler";
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes("vapid")) {
+    showWarning(
+      "Push-Benachrichtigungen benötigen einen gültigen VAPID Public Key.",
+      null,
+      {
+        title: "Push-Setup unvollständig",
+        list: [
+          "Öffne ⚙️ Einstellungen → Push-Benachrichtigungen",
+          'Trage den Base64 VAPID Public Key ein oder klicke "Fetch VAPID"',
+          "Aktiviere anschließend den Push-Schalter erneut",
+        ],
+        actions: [
+          {
+            label: "Einstellungen öffnen",
+            kind: "primary",
+            onClick: () => openSettingsModal("vapidKeyInput"),
+          },
+          {
+            label: "Fetch VAPID",
+            onClick: () => document.getElementById("fetchVapidBtn")?.click(),
+          },
+        ],
+      }
+    );
+    return;
+  }
+
+  if (normalized.includes("service worker")) {
+    showWarning(
+      "Push-Benachrichtigungen werden von diesem Browser leider nicht unterstützt.",
+      null,
+      {
+        meta: "Verwende einen aktuellen Chromium- oder Firefox-Browser mit aktiviertem Service Worker Support.",
+      }
+    );
+    return;
+  }
+
+  showWarning(`Push konnte nicht umgeschaltet werden: ${message}`, null, {
+    meta: "Bitte prüfe die Browser-Konsole für weitere Details.",
+  });
+}
+
+function openSettingsModal(focusFieldId) {
+  const modal = document.getElementById("settings-modal");
+  const modalOverlay = document.getElementById("modal-overlay");
+  if (!modal) return;
+  modal.classList.add("active");
+  modal.setAttribute("aria-hidden", "false");
+  modalOverlay?.classList.add("active");
+  document.body.style.overflow = "hidden";
+
+  if (focusFieldId) {
+    focusAndHighlight(focusFieldId, 250);
+  }
+}
+
+function closeModal(modalId) {
+  if (!modalId) return;
+  const modal = document.getElementById(modalId);
+  const modalOverlay = document.getElementById("modal-overlay");
+  if (!modal) return;
+  modal.classList.remove("active");
+  modal.setAttribute("aria-hidden", "true");
+  modalOverlay?.classList.remove("active");
+  document.body.style.overflow = "";
+}
+
+function closeAllModals() {
+  document.querySelectorAll(".modal.active").forEach((modal) => {
+    modal.classList.remove("active");
+    modal.setAttribute("aria-hidden", "true");
+  });
+  const modalOverlay = document.getElementById("modal-overlay");
+  modalOverlay?.classList.remove("active");
+  document.body.style.overflow = "";
+}
+
+function focusAndHighlight(elementId, delay = 150) {
+  if (!elementId) return;
+  setTimeout(() => {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    try {
+      element.focus({ preventScroll: false });
+    } catch (e) {
+      element.focus();
+    }
+    element.classList.add("input-highlight");
+    setTimeout(() => element.classList.remove("input-highlight"), 2200);
+  }, delay);
 }
 
 // === Drag ohne Zucken ===

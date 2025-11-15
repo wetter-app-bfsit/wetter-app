@@ -9,13 +9,13 @@
 
 :root {
   /* 🌞 Light Mode - MAXIMUM CONTRAST */
-  --bg-light: #ffffff; /* Pure white background */
+  --bg-light: linear-gradient(180deg, #f6f8fc 0%, #e4e9f2 100%);
   --text-light: #1a1a1a; /* Nearly black text */
-  --text-heading: #000000; /* Pure black headings */
-  --text-muted: rgba(0, 0, 0, 0.6);
-  --box-light: #f8f9fa;
-  --border-light: #dee2e6;
-  --shadow-light: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --text-heading: #0f172a; /* Dark slate */
+  --text-muted: rgba(17, 24, 39, 0.65);
+  --box-light: #ffffff;
+  --border-light: rgba(15, 23, 42, 0.08);
+  --shadow-light: 0 25px 60px rgba(15, 23, 42, 0.08);
 
   /* 🌙 Dark Mode */
   --bg-dark: linear-gradient(135deg, #1e272e 0%, #485460 100%);
@@ -263,6 +263,16 @@ body.dark-mode input::placeholder {
   padding: var(--spacing-xl) var(--spacing-md);
   flex: 1;
   width: 100%;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 32px;
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-light);
+}
+
+body.dark-mode .app-container {
+  background: rgba(44, 62, 80, 0.92);
+  border-color: var(--border-dark);
+  box-shadow: var(--shadow-dark);
 }
 
 /* ============================================
@@ -794,13 +804,14 @@ body.dark-mode .source-compare {
 }
 
 .error-alert {
-  background: white;
+  background: #ffffff;
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-light);
   overflow: hidden;
   animation: slideInRight 0.3s ease;
   transform: translateX(500px);
   transition: var(--transition);
+  border-left: 4px solid var(--accent);
 }
 
 .error-alert.show {
@@ -810,6 +821,50 @@ body.dark-mode .source-compare {
 body.dark-mode .error-alert {
   background: var(--box-dark);
   box-shadow: var(--shadow-dark);
+}
+
+.error-alert.error-error {
+  border-left-color: #e03131;
+  background: #fff5f5;
+  color: #7f1d1d;
+}
+
+body.dark-mode .error-alert.error-error {
+  background: rgba(224, 49, 49, 0.15);
+  color: #ffc9c9;
+}
+
+.error-alert.error-warning {
+  border-left-color: #f08c00;
+  background: #fff8e1;
+  color: #7a4100;
+}
+
+body.dark-mode .error-alert.error-warning {
+  background: rgba(240, 140, 0, 0.15);
+  color: #ffd8a8;
+}
+
+.error-alert.error-info {
+  border-left-color: #1c7ed6;
+  background: #e7f5ff;
+  color: #0b4f91;
+}
+
+body.dark-mode .error-alert.error-info {
+  background: rgba(28, 126, 214, 0.15);
+  color: #a5d8ff;
+}
+
+.error-alert.error-success {
+  border-left-color: #2f9e44;
+  background: #ebfbee;
+  color: #1b5e20;
+}
+
+body.dark-mode .error-alert.error-success {
+  background: rgba(47, 158, 68, 0.15);
+  color: #b2f2bb;
 }
 
 @keyframes slideInRight {
@@ -835,9 +890,40 @@ body.dark-mode .error-alert {
   flex-shrink: 0;
 }
 
-.error-message {
+.error-body {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.error-title {
+  font-weight: 600;
+  margin: 0;
   font-size: 0.95rem;
+}
+
+.error-message {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.error-meta {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.error-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.9rem;
+  color: inherit;
+}
+
+.error-list li {
+  margin-bottom: 0.2rem;
 }
 
 .error-close {
@@ -857,6 +943,7 @@ body.dark-mode .error-alert {
   display: flex;
   gap: var(--spacing-sm);
   margin-top: var(--spacing-md);
+  flex-wrap: wrap;
 }
 
 .btn-retry {
@@ -1205,6 +1292,15 @@ body.dark-mode .api-status-empty {
 
 .api-status-item.status-skipped {
   border-left-color: #7f8c8d;
+}
+
+.api-status-item.status-invalid-key {
+  border-left-color: #c0392b;
+  background: rgba(192, 57, 43, 0.08);
+}
+
+body.dark-mode .api-status-item.status-invalid-key {
+  background: rgba(192, 57, 43, 0.15);
 }
 
 .api-status-item.status-pending {
@@ -1574,8 +1670,25 @@ textarea:focus-visible {
   box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.1);
 }
 
+.input-highlight {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.25) !important;
+  animation: inputPulse 1.6s ease;
+}
+
+@keyframes inputPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.35);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(0, 123, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 123, 255, 0);
+  }
+}
+
 /* Alert & Error messages - high contrast */
-.error-alert,
 .alert-error {
   background-color: #f8d7da;
   border: 2px solid #721c24;
@@ -1586,7 +1699,6 @@ textarea:focus-visible {
   font-weight: 500;
 }
 
-body.dark-mode .error-alert,
 body.dark-mode .alert-error {
   background-color: rgba(220, 53, 69, 0.2);
   border-color: #ff6b6b;

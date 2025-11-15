@@ -18,14 +18,30 @@ class WeatherMap {
     const container = document.getElementById(this.containerId);
     if (!container) return;
 
+    const safeLat = Number(lat);
+    const safeLng = Number(lng);
+    if (!Number.isFinite(safeLat) || !Number.isFinite(safeLng)) {
+      container.innerHTML = `<p style="color: #c0392b; padding: 20px;">Karte konnte nicht geladen werden: Ungültige Koordinaten</p>`;
+      return;
+    }
+
     // Clear existing map completely
     if (this.map) {
       try {
         this.map.remove();
-        this.map = null;
-        this.marker = null;
       } catch (e) {
         console.warn("Map cleanup warning:", e);
+      }
+      this.map = null;
+      this.marker = null;
+    }
+
+    // Reset Leaflet container to avoid "already initialized" errors
+    if (container._leaflet_id) {
+      try {
+        container._leaflet_id = null;
+      } catch (e) {
+        console.warn("Leaflet container reset failed:", e);
       }
     }
 
@@ -34,7 +50,7 @@ class WeatherMap {
 
     // Initialize Leaflet map
     try {
-      this.map = L.map(this.containerId).setView([lat, lng], 10);
+      this.map = L.map(this.containerId).setView([safeLat, safeLng], 10);
 
       // Add OSM tile layer
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -44,10 +60,12 @@ class WeatherMap {
       }).addTo(this.map);
 
       // Add marker
-      this.marker = L.marker([lat, lng]).addTo(this.map);
+      this.marker = L.marker([safeLat, safeLng]).addTo(this.map);
       this.marker
         .bindPopup(
-          `<b>${cityName}</b><br>Lat: ${lat.toFixed(2)}, Lng: ${lng.toFixed(2)}`
+          `<b>${cityName}</b><br>Lat: ${safeLat.toFixed(
+            2
+          )}, Lng: ${safeLng.toFixed(2)}`
         )
         .openPopup();
 
@@ -59,23 +77,34 @@ class WeatherMap {
   }
 
   updateLocation(lat, lng, cityName) {
-    if (!this.map) {
+    const safeLat = Number(lat);
+    const safeLng = Number(lng);
+    if (!Number.isFinite(safeLat) || !Number.isFinite(safeLng)) {
       this.init(lat, lng, cityName);
       return;
     }
 
-    this.map.setView([lat, lng], 10);
+    if (!this.map) {
+      this.init(safeLat, safeLng, cityName);
+      return;
+    }
+
+    this.map.setView([safeLat, safeLng], 10);
 
     if (this.marker) {
-      this.marker.setLatLng([lat, lng]);
+      this.marker.setLatLng([safeLat, safeLng]);
       this.marker.setPopupContent(
-        `<b>${cityName}</b><br>Lat: ${lat.toFixed(2)}, Lng: ${lng.toFixed(2)}`
+        `<b>${cityName}</b><br>Lat: ${safeLat.toFixed(
+          2
+        )}, Lng: ${safeLng.toFixed(2)}`
       );
     } else {
-      this.marker = L.marker([lat, lng]).addTo(this.map);
+      this.marker = L.marker([safeLat, safeLng]).addTo(this.map);
       this.marker
         .bindPopup(
-          `<b>${cityName}</b><br>Lat: ${lat.toFixed(2)}, Lng: ${lng.toFixed(2)}`
+          `<b>${cityName}</b><br>Lat: ${safeLat.toFixed(
+            2
+          )}, Lng: ${safeLng.toFixed(2)}`
         )
         .openPopup();
     }
@@ -102,7 +131,7 @@ class WeatherAlerts {
       // Simulate MeteoAlarm data (in production, use real API)
       // For now, check Open-Meteo for severe weather codes
       const response = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weathercode,windspeed_10m&hourly=temperature_2m,weathercode&timezone=auto`
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weathercode,windspeed_10m,relativehumidity_2m&hourly=temperature_2m,apparent_temperature,weathercode,windspeed_10m,precipitation_probability,precipitation&timezone=auto`
       );
 
       if (!response.ok) throw new Error("API Fehler");
@@ -121,71 +150,166 @@ class WeatherAlerts {
     const alerts = [];
     const current = data.current || {};
     const hourly = data.hourly || {};
+    const issued = new Set();
+    const formatTime = (iso) =>
+      new Date(iso || Date.now()).toLocaleString("de-DE", {
+        weekday: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
 
-    // Check for extreme conditions
-    if (current.windspeed_10m > 60) {
+    const pushAlert = (key, payload) => {
+      if (issued.has(key)) return;
+      issued.add(key);
       alerts.push({
-        severity: "red",
-        icon: "🌪️",
-        title: "Sturmwarnung",
-        description: `Sehr starker Wind mit ${current.windspeed_10m.toFixed(
-          0
-        )} km/h erwartet.`,
-        time: new Date().toLocaleString("de-DE"),
+        ...payload,
+        time: formatTime(payload.time),
       });
-    } else if (current.windspeed_10m > 40) {
-      alerts.push({
-        severity: "orange",
-        icon: "💨",
-        title: "Windwarnung",
-        description: `Starker Wind mit ${current.windspeed_10m.toFixed(
-          0
-        )} km/h.`,
-        time: new Date().toLocaleString("de-DE"),
-      });
+    };
+
+    // Current conditions first
+    if (typeof current.windspeed_10m === "number") {
+      if (current.windspeed_10m >= 65) {
+        pushAlert("wind-now-red", {
+          severity: "red",
+          icon: "🌪️",
+          title: "Akute Sturmwarnung",
+          description: `Orkanartige Böen bis ${current.windspeed_10m.toFixed(
+            0
+          )} km/h in ${city}.`,
+          time: Date.now(),
+        });
+      } else if (current.windspeed_10m >= 45) {
+        pushAlert("wind-now-orange", {
+          severity: "orange",
+          icon: "💨",
+          title: "Starke Böen",
+          description: `Aktuell ${current.windspeed_10m.toFixed(
+            0
+          )} km/h. Gegenstände sichern!`,
+          time: Date.now(),
+        });
+      }
     }
 
-    // Check temperature extremes
-    if (current.temperature_2m > 35) {
-      alerts.push({
-        severity: "orange",
-        icon: "🔥",
-        title: "Hitzewarnung",
-        description: `Sehr hohe Temperaturen (${current.temperature_2m.toFixed(
-          1
-        )}°C).`,
-        time: new Date().toLocaleString("de-DE"),
-      });
-    } else if (current.temperature_2m < -10) {
-      alerts.push({
-        severity: "orange",
-        icon: "❄️",
-        title: "Kältewarnung",
-        description: `Sehr niedrige Temperaturen (${current.temperature_2m.toFixed(
-          1
-        )}°C).`,
-        time: new Date().toLocaleString("de-DE"),
-      });
+    if (typeof current.temperature_2m === "number") {
+      if (current.temperature_2m >= 33) {
+        pushAlert("heat-now", {
+          severity: "orange",
+          icon: "🔥",
+          title: "Hitzewarnung",
+          description: `Gefühlte Hitze über 33°C. Viel trinken!`,
+          time: Date.now(),
+        });
+      } else if (current.temperature_2m <= -8) {
+        pushAlert("cold-now", {
+          severity: "orange",
+          icon: "❄️",
+          title: "Frostwarnung",
+          description: `Extrem niedrige Temperaturen (${current.temperature_2m.toFixed(
+            1
+          )}°C).`,
+          time: Date.now(),
+        });
+      }
     }
 
-    // Check for severe weather codes
-    const weathercode = current.weathercode;
-    if ([95, 96, 99].includes(weathercode)) {
-      alerts.push({
+    if ([95, 96, 99].includes(current.weathercode)) {
+      pushAlert("storm-now", {
         severity: "red",
         icon: "⛈️",
         title: "Gewitterwarnung",
-        description: "Gewitter mit Starkregen möglich.",
-        time: new Date().toLocaleString("de-DE"),
+        description: "Gewitter mit Hagel oder Starkregen in der Nähe.",
+        time: Date.now(),
       });
-    } else if ([82, 86].includes(weathercode)) {
-      alerts.push({
-        severity: "orange",
-        icon: "🌧️",
-        title: "Starkregenwarnung",
-        description: "Starker Regen erwartet.",
-        time: new Date().toLocaleString("de-DE"),
-      });
+    }
+
+    // Forecast horizon (~48h)
+    const times = hourly.time || [];
+    const winds = hourly.windspeed_10m || [];
+    const precipProb = hourly.precipitation_probability || [];
+    const precip = hourly.precipitation || [];
+    const apparent = hourly.apparent_temperature || [];
+    const codes = hourly.weathercode || [];
+    const horizon = Math.min(times.length, 48);
+
+    for (let i = 0; i < horizon; i += 1) {
+      const isoTime = times[i];
+      const wind = winds[i];
+      const prob = precipProb[i];
+      const rain = precip[i];
+      const feels = apparent[i];
+      const code = codes[i];
+
+      if (typeof wind === "number" && wind >= 70) {
+        pushAlert("wind-forecast", {
+          severity: "red",
+          icon: "🌪️",
+          title: "Schwerer Sturm erwartet",
+          description: `Böen bis ${wind.toFixed(0)} km/h am ${formatTime(
+            isoTime
+          )}. Outdoor-Aktivitäten vermeiden!`,
+          time: isoTime,
+        });
+      } else if (typeof wind === "number" && wind >= 55) {
+        pushAlert("wind-forecast-orange", {
+          severity: "orange",
+          icon: "💨",
+          title: "Sturmböen in Vorbereitung",
+          description: `Vorhersage meldet ${wind.toFixed(
+            0
+          )} km/h. Gartenmöbel sichern!`,
+          time: isoTime,
+        });
+      }
+
+      if (
+        typeof prob === "number" &&
+        prob >= 80 &&
+        typeof rain === "number" &&
+        rain >= 5
+      ) {
+        pushAlert("rain-heavy", {
+          severity: "orange",
+          icon: "🌧️",
+          title: "Starkregen möglich",
+          description: `Niederschlag ≥ ${rain.toFixed(
+            1
+          )} mm (${prob}% Wahrscheinlichkeit).`,
+          time: isoTime,
+        });
+      }
+
+      if (typeof feels === "number" && feels <= -12) {
+        pushAlert("frost-forecast", {
+          severity: "yellow",
+          icon: "🧊",
+          title: "Strenger Frost",
+          description: `Gefühlte Temperatur ${feels.toFixed(
+            1
+          )}°C in den Morgenstunden.`,
+          time: isoTime,
+        });
+      }
+
+      if ([95, 96, 99].includes(code)) {
+        pushAlert("storm-forecast", {
+          severity: "red",
+          icon: "⛈️",
+          title: "Gewitterfront im Anmarsch",
+          description:
+            "Blitz, Donner und Hagel laut Prognose. Bitte Schutz suchen!",
+          time: isoTime,
+        });
+      } else if ([82, 86].includes(code)) {
+        pushAlert("rain-squall", {
+          severity: "orange",
+          icon: "🌧️",
+          title: "Schauerbänder",
+          description: "Kurzzeitig sehr starker Regen möglich.",
+          time: isoTime,
+        });
+      }
     }
 
     return alerts;
@@ -264,7 +388,7 @@ class HistoricalChart {
     this.chart = null;
   }
 
-  async fetchAndRender(lat, lng, city) {
+  async fetchAndRender(lat, lon, city) {
     const container = document.getElementById(this.containerId);
     if (!container) return;
 
@@ -272,6 +396,12 @@ class HistoricalChart {
       '<p style="padding: 20px; text-align: center;">📊 Lade historische Daten...</p>';
 
     try {
+      const safeLat = Number(lat);
+      const safeLon = Number(lon);
+      if (!Number.isFinite(safeLat) || !Number.isFinite(safeLon)) {
+        throw new Error("Ungültige Koordinaten für historische Daten");
+      }
+
       // Prepare shared date window
       const endDate = new Date();
       endDate.setDate(endDate.getDate() - 1); // Yesterday (archive data is delayed)
@@ -288,7 +418,13 @@ class HistoricalChart {
         window.apiKeyManager.hasKey("meteostat") &&
         typeof MeteostatAPI === "function";
       if (canUseMeteostat) {
-        const used = await this.fetchViaMeteostat(lat, lng, city, start, end);
+        const used = await this.fetchViaMeteostat(
+          safeLat,
+          safeLon,
+          city,
+          start,
+          end
+        );
         if (used) {
           return;
         }
@@ -297,7 +433,7 @@ class HistoricalChart {
       console.log(`Fetching historical data (fallback): ${start} to ${end}`);
 
       const response = await fetch(
-        `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${start}&end_date=${end}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=auto`
+        `https://archive-api.open-meteo.com/v1/archive?latitude=${safeLat}&longitude=${safeLon}&start_date=${start}&end_date=${end}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=auto`
       );
 
       if (!response.ok) {
@@ -332,11 +468,11 @@ class HistoricalChart {
     }
   }
 
-  async fetchViaMeteostat(lat, lng, city, start, end) {
+  async fetchViaMeteostat(lat, lon, city, start, end) {
     try {
       const api = new MeteostatAPI();
       const key = window.apiKeyManager.getKey("meteostat");
-      const result = await api.fetchHistorical(lat, lng, start, end, key);
+      const result = await api.fetchHistorical(lat, lon, start, end, key);
       if (result.error || !result.daily || !result.daily.length) {
         throw new Error(result.error || "Keine Meteostat Daten");
       }

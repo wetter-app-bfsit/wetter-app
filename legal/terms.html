@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nutzungsbedingungen · Wetter-App</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f7f8fa;
+        --fg: #1f252f;
+        --card: #ffffff;
+        --accent: #007bff;
+      }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+      }
+      header {
+        padding: 2rem 1rem 1rem;
+        text-align: center;
+      }
+      main {
+        max-width: 900px;
+        margin: 0 auto 4rem;
+        padding: 0 1rem 3rem;
+      }
+      .legal-card {
+        background: var(--card);
+        border-radius: 16px;
+        box-shadow: 0 20px 45px rgba(15, 23, 42, 0.12);
+        padding: 2rem;
+      }
+      a {
+        color: var(--accent);
+      }
+      .nav-links {
+        display: flex;
+        justify-content: center;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+      }
+      .nav-links a {
+        text-decoration: none;
+        font-weight: 600;
+      }
+      #legal-content h1,
+      #legal-content h2,
+      #legal-content h3 {
+        margin-top: 2rem;
+      }
+      pre {
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>📜 Nutzungsbedingungen</h1>
+      <p>Originaltext aus <code>docs/legal/TERMS_OF_USE.md</code></p>
+    </header>
+    <main>
+      <nav class="nav-links">
+        <a href="../index.html">Zurück zur App</a>
+        <a href="privacy.html">← Datenschutzerklärung</a>
+      </nav>
+      <article id="legal-content" class="legal-card">
+        <p>Dokument wird geladen...</p>
+      </article>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+      async function loadDocument() {
+        try {
+          const res = await fetch("../docs/legal/TERMS_OF_USE.md");
+          if (!res.ok) throw new Error("Quelldatei nicht gefunden");
+          const text = await res.text();
+          const html = marked.parse(text, { breaks: true });
+          document.getElementById("legal-content").innerHTML = html;
+        } catch (err) {
+          document.getElementById("legal-content").innerHTML = `
+            <p style="color:#c0392b;">${err.message}</p>
+            <p>Bitte prüfe, ob die Datei <code>docs/legal/TERMS_OF_USE.md</code> vorhanden ist.</p>
+          `;
+        }
+      }
+      loadDocument();
+    </script>
+  </body>
+</html>

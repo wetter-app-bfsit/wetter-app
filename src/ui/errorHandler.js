@@ -13,37 +13,107 @@ class ErrorHandler {
    * @param {string} type - Error-Type (error, warning, info)
    * @param {number} duration - Auto-Hide Dauer in ms (null = manual)
    */
-  show(message, type = 'error', duration = null) {
+  show(message, type = "error", duration = null, options = {}) {
     if (!this.container) return;
 
     const errorId = `error_${Date.now()}`;
     const displayDuration = duration || this.autoHideTimeout;
+    const {
+      allowHtml = false,
+      title = null,
+      meta = null,
+      list = null,
+      actions = null,
+      icon = null,
+    } = options;
 
-    // Erstelle Error-Element
-    const errorEl = document.createElement('div');
+    const errorEl = document.createElement("div");
     errorEl.className = `error-alert error-${type}`;
     errorEl.id = errorId;
-    errorEl.innerHTML = `
-      <div class="error-content">
-        <span class="error-icon">${this._getIcon(type)}</span>
-        <span class="error-message">${this._escapeHtml(message)}</span>
-        <button class="error-close" data-error-id="${errorId}">✕</button>
-      </div>
-    `;
 
-    // Füge zum Container hinzu
+    const content = document.createElement("div");
+    content.className = "error-content";
+
+    const iconEl = document.createElement("span");
+    iconEl.className = "error-icon";
+    iconEl.textContent = icon || this._getIcon(type);
+
+    const body = document.createElement("div");
+    body.className = "error-body";
+
+    if (title) {
+      const titleEl = document.createElement("p");
+      titleEl.className = "error-title";
+      titleEl.textContent = title;
+      body.appendChild(titleEl);
+    }
+
+    const messageEl = document.createElement("p");
+    messageEl.className = "error-message";
+    if (allowHtml) {
+      messageEl.innerHTML = message;
+    } else {
+      messageEl.textContent = message;
+    }
+    body.appendChild(messageEl);
+
+    if (meta) {
+      const metaEl = document.createElement("p");
+      metaEl.className = "error-meta";
+      metaEl.textContent = meta;
+      body.appendChild(metaEl);
+    }
+
+    if (Array.isArray(list) && list.length) {
+      const listEl = document.createElement("ul");
+      listEl.className = "error-list";
+      list.forEach((item) => {
+        const li = document.createElement("li");
+        li.textContent = item;
+        listEl.appendChild(li);
+      });
+      body.appendChild(listEl);
+    }
+
+    if (Array.isArray(actions) && actions.length) {
+      const actionEl = document.createElement("div");
+      actionEl.className = "error-actions";
+      actions.forEach((action) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className =
+          action.kind === "primary" ? "btn-primary" : "btn-secondary";
+        btn.textContent = action.label;
+        btn.addEventListener("click", () => {
+          if (typeof action.onClick === "function") {
+            action.onClick({ close: () => this.hide(errorId) });
+          }
+        });
+        actionEl.appendChild(btn);
+      });
+      body.appendChild(actionEl);
+    }
+
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "error-close";
+    closeBtn.dataset.errorId = errorId;
+    closeBtn.setAttribute("aria-label", "Benachrichtigung schließen");
+    closeBtn.textContent = "✕";
+
+    content.appendChild(iconEl);
+    content.appendChild(body);
+    content.appendChild(closeBtn);
+    errorEl.appendChild(content);
+
     this.container.appendChild(errorEl);
     this.errorStack.push(errorId);
 
-    // Animation
-    setTimeout(() => errorEl.classList.add('show'), 10);
+    setTimeout(() => errorEl.classList.add("show"), 10);
 
-    // Close-Button Event
-    errorEl.querySelector('.error-close').addEventListener('click', () => {
+    closeBtn.addEventListener("click", () => {
       this.hide(errorId);
     });
 
-    // Auto-Hide
     if (displayDuration > 0) {
       setTimeout(() => this.hide(errorId), displayDuration);
     }
@@ -59,39 +129,39 @@ class ErrorHandler {
     const errorEl = document.getElementById(errorId);
     if (!errorEl) return;
 
-    errorEl.classList.remove('show');
+    errorEl.classList.remove("show");
     setTimeout(() => {
       errorEl.remove();
-      this.errorStack = this.errorStack.filter(id => id !== errorId);
+      this.errorStack = this.errorStack.filter((id) => id !== errorId);
     }, 300);
   }
 
   /**
    * Zeigt Error-Benachrichtigung
    */
-  showError(message, duration) {
-    return this.show(message, 'error', duration);
+  showError(message, duration, options) {
+    return this.show(message, "error", duration, options);
   }
 
   /**
    * Zeigt Warning-Benachrichtigung
    */
-  showWarning(message, duration) {
-    return this.show(message, 'warning', duration);
+  showWarning(message, duration, options) {
+    return this.show(message, "warning", duration, options);
   }
 
   /**
    * Zeigt Info-Benachrichtigung
    */
-  showInfo(message, duration) {
-    return this.show(message, 'info', duration);
+  showInfo(message, duration, options) {
+    return this.show(message, "info", duration, options);
   }
 
   /**
    * Zeigt Success-Benachrichtigung
    */
-  showSuccess(message, duration) {
-    return this.show(message, 'success', duration);
+  showSuccess(message, duration, options) {
+    return this.show(message, "success", duration, options);
   }
 
   /**
@@ -99,10 +169,10 @@ class ErrorHandler {
    */
   showApiError(apiSource, errorMessage) {
     const message = `
-      <strong>${apiSource} Fehler:</strong><br>
-      ${errorMessage}
-    `;
-    return this.showError(message);
+      <strong>${this._escapeHtml(apiSource)} Fehler:</strong><br>
+      ${this._escapeHtml(errorMessage)}
+    `.trim();
+    return this.showError(message, null, { allowHtml: true });
   }
 
   /**
@@ -112,8 +182,8 @@ class ErrorHandler {
     if (!this.container) return;
 
     const errorId = `error_${Date.now()}`;
-    const errorEl = document.createElement('div');
-    errorEl.className = 'error-alert error-error';
+    const errorEl = document.createElement("div");
+    errorEl.className = "error-alert error-error";
     errorEl.id = errorId;
     errorEl.innerHTML = `
       <div class="error-content">
@@ -129,16 +199,16 @@ class ErrorHandler {
     this.container.appendChild(errorEl);
     this.errorStack.push(errorId);
 
-    setTimeout(() => errorEl.classList.add('show'), 10);
+    setTimeout(() => errorEl.classList.add("show"), 10);
 
     // Retry Button
-    errorEl.querySelector('.btn-retry').addEventListener('click', () => {
+    errorEl.querySelector(".btn-retry").addEventListener("click", () => {
       this.hide(errorId);
       onRetry();
     });
 
     // Close Button
-    errorEl.querySelector('.error-close').addEventListener('click', () => {
+    errorEl.querySelector(".error-close").addEventListener("click", () => {
       this.hide(errorId);
     });
 
@@ -149,24 +219,26 @@ class ErrorHandler {
    * Zeigt mehrzeiligen Error
    */
   showDetailed(title, details, errorCode = null) {
-    let message = `<strong>${title}</strong>`;
-    
+    let message = `<strong>${this._escapeHtml(title)}</strong>`;
+
     if (details) {
-      message += `<br><small>${details}</small>`;
-    }
-    
-    if (errorCode) {
-      message += `<br><code style="font-size: 0.8em; opacity: 0.7;">Code: ${errorCode}</code>`;
+      message += `<br><small>${this._escapeHtml(details)}</small>`;
     }
 
-    return this.showError(message, null); // Manual dismiss
+    if (errorCode) {
+      message += `<br><code style="font-size: 0.8em; opacity: 0.7;">Code: ${this._escapeHtml(
+        errorCode
+      )}</code>`;
+    }
+
+    return this.showError(message, null, { allowHtml: true });
   }
 
   /**
    * Löscht alle Errors
    */
   clearAll() {
-    this.errorStack.forEach(errorId => {
+    this.errorStack.forEach((errorId) => {
       const el = document.getElementById(errorId);
       if (el) el.remove();
     });
@@ -179,12 +251,12 @@ class ErrorHandler {
    */
   _getIcon(type) {
     const icons = {
-      error: '❌',
-      warning: '⚠️',
-      info: 'ℹ️',
-      success: '✅'
+      error: "❌",
+      warning: "⚠️",
+      info: "ℹ️",
+      success: "✅",
     };
-    return icons[type] || '🔔';
+    return icons[type] || "🔔";
   }
 
   /**
@@ -192,7 +264,7 @@ class ErrorHandler {
    * @private
    */
   _escapeHtml(text) {
-    const div = document.createElement('div');
+    const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML;
   }
@@ -220,7 +292,7 @@ let errorHandler;
 /**
  * Initialisiert Error-Handler (wird in app.js aufgerufen)
  */
-function initErrorHandler(containerSelector = '#error-container') {
+function initErrorHandler(containerSelector = "#error-container") {
   errorHandler = new ErrorHandler(containerSelector);
   return errorHandler;
 }
@@ -228,18 +300,18 @@ function initErrorHandler(containerSelector = '#error-container') {
 /**
  * Shortcut-Funktionen
  */
-function showError(message, duration) {
-  return errorHandler?.showError(message, duration);
+function showError(message, duration, options) {
+  return errorHandler?.showError(message, duration, options);
 }
 
-function showWarning(message, duration) {
-  return errorHandler?.showWarning(message, duration);
+function showWarning(message, duration, options) {
+  return errorHandler?.showWarning(message, duration, options);
 }
 
-function showInfo(message, duration) {
-  return errorHandler?.showInfo(message, duration);
+function showInfo(message, duration, options) {
+  return errorHandler?.showInfo(message, duration, options);
 }
 
-function showSuccess(message, duration) {
-  return errorHandler?.showSuccess(message, duration);
+function showSuccess(message, duration, options) {
+  return errorHandler?.showSuccess(message, duration, options);
 }
