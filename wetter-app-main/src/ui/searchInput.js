@@ -1,1 +1,0 @@
-/* Stadt-Suche Component */

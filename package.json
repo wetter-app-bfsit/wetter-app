@@ -1,0 +1,18 @@
+{
+  "name": "wetter-app",
+  "version": "0.1.0",
+  "description": "Weather app (local dev scripts)",
+  "main": "src/app.js",
+  "scripts": {
+    "push-demo": "node tools/push-demo.js",
+    "push-server": "node tools/push-server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "body-parser": "^1.20.2",
+    "web-push": "^4.2.0"
+  },
+  "engines": {
+    "node": ">=14"
+  }
+}

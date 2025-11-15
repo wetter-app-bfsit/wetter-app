@@ -1,44 +1,189 @@
-
-# EINSTIEGSPUNKT der App - Struktur der Webseite in HTML 
-  # Erstellt Gerüst (Buttons, Textfelder, Divs)
-
 <!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wetter App</title>
+  <meta name="description" content="Wetter-App mit Open-Meteo und BrightSky Integration">
+  <meta name="theme-color" content="#007BFF">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🌦️</text></svg>">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%23007BFF' width='180' height='180' rx='40'/><text x='90' y='130' font-size='140' text-anchor='middle'>🌦️</text></svg>">
+
+  <title>🌦️ Wetter App - Aktuelle Wetterdaten</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Wetter App</h1>
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-content">
+      <h1 class="app-title">🌦️ Wetter App</h1>
+      <div class="header-controls">
+        <button id="modeToggle" class="btn-icon" title="Dark Mode Toggle">🌙</button>
+        <button id="pushToggle" class="btn-icon" title="Push-Benachrichtigungen aktivieren">🔔</button>
+        <button id="settingsBtn" class="btn-icon" title="Einstellungen">⚙️</button>
+      </div>
+    </div>
+  </header>
 
-  <div class="search-section">
-    <input id="cityInput" type="text" placeholder="Ort eingeben...">
-    <button id="searchBtn">🔍 Suchen</button>
-    <button id="modeToggle">🌙 Dark Mode</button>
-  </div>
+  <!-- Main Content -->
+  <main class="app-container">
+    <!-- Error Container -->
+    <div id="error-container" class="error-container"></div>
 
-  <p id="result"></p>
+    <!-- Search Section -->
+    <section class="search-section">
+      <div class="search-box">
+        <input 
+          id="cityInput" 
+          type="text" 
+          placeholder="Ort eingeben (z.B. Berlin, München)..."
+          class="search-input"
+          autocomplete="off"
+        >
+        <button id="searchBtn" class="btn-primary search-btn">🔍 Suchen</button>
+      </div>
 
-  <div class="api-navigation">
-    <button id="prevBtn">⬅</button>
-    <div class="api-container">
-      <div class="api-track" id="apiTrack">
-        <div class="api-box">
-          <h2>Open-Meteo</h2>
-          <div id="api1Result" class="hourly"></div>
+      <!-- Recent Cities -->
+      <div id="recent-cities" class="recent-cities-section"></div>
+
+      <!-- Favorites -->
+      <div class="favorites-section">
+        <h3>⭐ Favoriten</h3>
+        <div id="favorites-list" class="favorites-list"></div>
+      </div>
+    </section>
+
+    <!-- Current Weather Display -->
+    <section id="current-weather" class="weather-section">
+      <div class="empty-state">
+        <p>🔍 Geben Sie einen Ort ein um Wetterdaten zu sehen</p>
+      </div>
+    </section>
+
+    <!-- Forecast Section -->
+    <section id="forecast-container" class="forecast-section"></section>
+
+    <!-- API Sources Comparison -->
+    <section id="sources-comparison" class="sources-section">
+      <h2>📊 API Quellen Vergleich</h2>
+      <div class="sources-grid">
+        <div id="source-openmeteo" class="source-card">
+          <h3>🌐 Open-Meteo</h3>
+          <div class="source-content"></div>
         </div>
+        <div id="source-brightsky" class="source-card">
+          <h3>☁️ BrightSky</h3>
+          <div class="source-content"></div>
+        </div>
+      </div>
+    </section>
 
-        <div class="api-box">
-          <h2>BrightSky</h2>
-          <div id="api2Result" class="hourly"></div>
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>⚙️ Einstellungen</h2>
+          <button class="modal-close" data-close="settings-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <!-- Units Toggle -->
+          <div class="settings-group">
+            <label class="settings-label">
+              <span>🌡️ Temperatureinheit:</span>
+              <select id="temp-unit-select" class="settings-select">
+                <option value="C">Celsius (°C)</option>
+                <option value="F">Fahrenheit (°F)</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="settings-group">
+            <label class="settings-label">
+              <span>💨 Windgeschwindigkeit:</span>
+              <select id="wind-unit-select" class="settings-select">
+                <option value="km/h">Kilometer pro Stunde (km/h)</option>
+                <option value="m/s">Meter pro Sekunde (m/s)</option>
+              </select>
+            </label>
+          </div>
+
+          <!-- Cache Settings -->
+          <div class="settings-group">
+            <label class="settings-label">
+              <input type="checkbox" id="cache-enabled" checked>
+              <span>Caching aktivieren</span>
+            </label>
+          </div>
+
+          <!-- Cache Management -->
+          <div class="settings-group">
+            <button id="clear-cache-btn" class="btn-secondary">🧹 Cache leeren</button>
+            <button id="clear-recent-btn" class="btn-secondary">🗑️ Verlauf löschen</button>
+          </div>
+
+          <!-- VAPID Key for Push (optional) -->
+          <div class="settings-group">
+            <label class="settings-label">
+              <span>🔐 VAPID Public Key (optional):</span>
+              <input id="vapidKeyInput" class="settings-input" placeholder="Base64 URL-safe Public VAPID Key">
+            </label>
+            <div style="display:flex;gap:8px;margin-top:8px;align-items:center;">
+              <button id="saveVapidBtn" class="btn-secondary">Speichern</button>
+              <button id="fetchVapidBtn" class="btn-secondary">Fetch VAPID</button>
+            </div>
+          </div>
+
+          <!-- API Status -->
+          <div class="settings-group">
+            <h3>📊 API Status</h3>
+            <div id="api-status" class="api-status-list"></div>
+          </div>
         </div>
       </div>
     </div>
-    <button id="nextBtn">➡</button>
-  </div>
 
-  <script src="script.js"></script>
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p class="footer-text">
+        🌐 Datenquellen: 
+        <a href="https://open-meteo.com" target="_blank">Open-Meteo</a> | 
+        <a href="https://brightsky.dev" target="_blank">BrightSky</a> | 
+        <a href="https://nominatim.org" target="_blank">Nominatim</a>
+      </p>
+      <p class="footer-text">
+        <small>© 2025 Wetter-App | <a href="#privacy">Datenschutz</a> | <a href="#terms">Nutzungsbedingungen</a></small>
+      </p>
+    </footer>
+  </main>
+
+  <!-- Modal Overlay -->
+  <div id="modal-overlay" class="modal-overlay"></div>
+  <script>
+    // PWA - Service Worker registrieren
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js').then(reg => {
+        console.log('✅ Service Worker registriert:', reg);
+      }).catch(err => {
+        console.warn('❌ Service Worker Registrierung fehlgeschlagen:', err);
+      });
+    }
+  </script>
+
+  <!-- Scripts - Utils -->
+  <script src="utils/constants.js"></script>
+  <script src="utils/cache.js"></script>
+  <script src="utils/validation.js"></script>
+
+  <!-- Scripts - API -->
+  <script src="api/weather.js"></script>
+  <script src="api/brightsky.js"></script>
+
+  <!-- Scripts - UI Components -->
+  <script src="ui/errorHandler.js"></script>
+  <script src="ui/searchInput.js"></script>
+  <script src="ui/weatherDisplay.js"></script>
+
+  <!-- Scripts - Main App -->
+  <script src="app.js"></script>
 </body>
 </html>

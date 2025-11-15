@@ -1,1 +1,0 @@
-/* open-meteo.com API Integration */

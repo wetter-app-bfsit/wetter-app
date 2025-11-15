@@ -1,1 +1,0 @@
-/* brightsky.dev API Integration */

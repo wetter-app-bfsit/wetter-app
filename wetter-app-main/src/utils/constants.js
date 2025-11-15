@@ -1,1 +1,0 @@
-/* Konstanten (API-URLs, etc.) */

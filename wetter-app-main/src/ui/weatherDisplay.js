@@ -1,1 +1,0 @@
-/* Wetter-Anzeige Component */
