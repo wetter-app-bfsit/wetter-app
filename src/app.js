@@ -288,7 +288,11 @@ function initializeApiStatusDefaults() {
     const hasKey = provider.key
       ? hasManager && window.apiKeyManager.hasKey(provider.key)
       : true;
-    const state = provider.requiresKey && !hasKey ? "missing-key" : "pending";
+    const state = provider.requiresKey
+      ? hasKey
+        ? "online"
+        : "missing-key"
+      : "online";
     const message =
       provider.requiresKey && !hasKey
         ? "API-Key erforderlich"
@@ -609,7 +613,7 @@ function syncProviderKeyState(providerId) {
       provider.note ? ` · ${provider.note}` : ""
     }`;
   } else {
-    payload.state = "pending";
+    payload.state = "online";
     payload.message = provider.note || "Bereit – Key gespeichert";
     payload.detail = provider.requiresKey
       ? `🔐 Key gespeichert${provider.note ? ` · ${provider.note}` : ""}`
@@ -644,6 +648,223 @@ function buildRenderData(rawData, units) {
     const at = tC + 0.33 * e - 0.7 * W - 4.0;
     return Math.round(at * 10) / 10;
   }
+
+  const dayFormatter = new Intl.DateTimeFormat("de-DE", {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+  });
+
+  const toNumber = (value) =>
+    typeof value === "number" && !Number.isNaN(value) ? value : null;
+
+  const average = (values = []) => {
+    const filtered = values.filter((v) => typeof v === "number");
+    if (!filtered.length) return null;
+    const total = filtered.reduce((acc, val) => acc + val, 0);
+    return total / filtered.length;
+  };
+
+  const averageDirection = (values = []) => {
+    const filtered = values.filter((v) => typeof v === "number");
+    if (!filtered.length) return null;
+    const sum = filtered.reduce(
+      (acc, deg) => {
+        const rad = (deg * Math.PI) / 180;
+        acc.x += Math.cos(rad);
+        acc.y += Math.sin(rad);
+        return acc;
+      },
+      { x: 0, y: 0 }
+    );
+    const angle = (Math.atan2(sum.y, sum.x) * 180) / Math.PI;
+    return (angle + 360) % 360;
+  };
+
+  const directionToCompass = (deg) => {
+    if (typeof deg !== "number" || Number.isNaN(deg)) return null;
+    const dirs = [
+      "N",
+      "NNO",
+      "NO",
+      "ONO",
+      "O",
+      "OSO",
+      "SO",
+      "SSO",
+      "S",
+      "SSW",
+      "SW",
+      "WSW",
+      "W",
+      "WNW",
+      "NW",
+      "NNW",
+    ];
+    const idx = Math.round(deg / 22.5) % dirs.length;
+    return dirs[idx];
+  };
+
+  const formatDayLabel = (dateStr) => {
+    if (!dateStr) return "";
+    try {
+      return dayFormatter.format(new Date(`${dateStr}T00:00:00`));
+    } catch (err) {
+      return dateStr;
+    }
+  };
+
+  const createHourGrid = (hours = []) => {
+    const hourLookup = new Map();
+    hours.forEach((entry) => {
+      if (!entry?.time) return;
+      const dt = new Date(entry.time);
+      if (Number.isNaN(dt.getTime())) return;
+      const hour = dt.getHours();
+      if (!hourLookup.has(hour)) {
+        hourLookup.set(hour, entry);
+      }
+    });
+
+    return Array.from({ length: 24 }, (_, hour) => {
+      const slot = hourLookup.get(hour);
+      return {
+        hour,
+        temperature: toNumber(slot?.temperature),
+        emoji: slot?.emoji || "",
+        precipitation: toNumber(slot?.precipitation),
+        precipitationProbability: toNumber(slot?.precipitationProbability),
+        uvIndex: toNumber(slot?.uvIndex),
+        uvIndexClearSky: toNumber(slot?.uvIndexClearSky),
+        windSpeed: toNumber(slot?.windSpeed),
+        windDirection: toNumber(slot?.windDirection),
+        dewPoint: toNumber(slot?.dewPoint),
+        humidity: toNumber(slot?.humidity),
+        isDay:
+          typeof slot?.isDay === "number" ? slot.isDay : slot?.isDay ?? null,
+      };
+    });
+  };
+
+  const buildDayInsights = (byDayEntries = [], dailyEntries = []) =>
+    byDayEntries.map((entry) => {
+      const hours = entry.hours || [];
+      const hourGrid = createHourGrid(hours);
+      const hourTemps = hourGrid
+        .map((slot) => slot.temperature)
+        .filter((v) => v !== null);
+      const dewValues = hourGrid
+        .map((slot) => slot.dewPoint)
+        .filter((v) => v !== null);
+      const humidityValues = hourGrid
+        .map((slot) => slot.humidity)
+        .filter((v) => v !== null);
+      const windSpeeds = hourGrid
+        .map((slot) => slot.windSpeed)
+        .filter((v) => v !== null);
+      const windDirections = hourGrid
+        .map((slot) => slot.windDirection)
+        .filter((v) => v !== null);
+      const precipAmounts = hourGrid.map((slot) => slot.precipitation || 0);
+
+      const matchingDaily = dailyEntries.find((d) => d.date === entry.date);
+      const uvSeries = hourGrid
+        .map((slot) => slot.uvIndex)
+        .filter((v) => v !== null);
+      const uvPeak =
+        typeof matchingDaily?.uvIndexMax === "number"
+          ? matchingDaily.uvIndexMax
+          : uvSeries.length
+          ? Math.max(...uvSeries)
+          : null;
+
+      const sunrise = matchingDaily?.sunrise || null;
+      const sunset = matchingDaily?.sunset || null;
+      const sunriseDate = sunrise ? new Date(sunrise) : null;
+      const sunsetDate = sunset ? new Date(sunset) : null;
+      const daylightMinutes =
+        sunriseDate && sunsetDate
+          ? Math.max(0, Math.round((sunsetDate - sunriseDate) / 60000))
+          : null;
+      const sunrisePercent =
+        sunriseDate !== null
+          ? ((sunriseDate.getHours() + sunriseDate.getMinutes() / 60) / 24) *
+            100
+          : null;
+      const sunsetPercent =
+        sunsetDate !== null
+          ? ((sunsetDate.getHours() + sunsetDate.getMinutes() / 60) / 24) * 100
+          : null;
+
+      const windDirectionAvg = averageDirection(windDirections);
+
+      const condition =
+        typeof matchingDaily?.weatherCode === "number"
+          ? WEATHER_CODES[matchingDaily.weatherCode]?.description
+          : undefined;
+
+      return {
+        date: entry.date,
+        label: formatDayLabel(entry.date),
+        emoji:
+          matchingDaily?.emoji ||
+          hours.find((h) => {
+            const dt = new Date(h.time);
+            return dt.getHours() === 12;
+          })?.emoji ||
+          hours[0]?.emoji ||
+          "❓",
+        summary: {
+          tempMax:
+            typeof matchingDaily?.tempMax === "number"
+              ? matchingDaily.tempMax
+              : hourTemps.length
+              ? Math.max(...hourTemps)
+              : null,
+          tempMin:
+            typeof matchingDaily?.tempMin === "number"
+              ? matchingDaily.tempMin
+              : hourTemps.length
+              ? Math.min(...hourTemps)
+              : null,
+          dewPointAvg: average(dewValues),
+          humidityAvg: average(humidityValues),
+          precipitationSum:
+            typeof matchingDaily?.precipitationSum === "number"
+              ? matchingDaily.precipitationSum
+              : precipAmounts.reduce((acc, val) => acc + (val || 0), 0),
+          precipitationHours: matchingDaily?.precipitationHours ?? null,
+          wind: {
+            avgSpeed: average(windSpeeds),
+            maxSpeed: windSpeeds.length ? Math.max(...windSpeeds) : null,
+            directionDeg: windDirectionAvg,
+            cardinal: directionToCompass(windDirectionAvg),
+          },
+          uvIndexMax: uvPeak,
+          condition,
+        },
+        sun: {
+          sunrise,
+          sunset,
+          sunrisePercent,
+          sunsetPercent,
+          daylightMinutes,
+        },
+        precipitationTimeline: hourGrid.map((slot) => ({
+          hour: slot.hour,
+          amount: slot.precipitation ?? 0,
+          probability: slot.precipitationProbability ?? null,
+          isDay: slot.isDay,
+        })),
+        uvTimeline: hourGrid.map((slot) => ({
+          hour: slot.hour,
+          value: slot.uvIndex,
+          clearSky: slot.uvIndexClearSky,
+        })),
+        hourGrid,
+        hours,
+      };
+    });
   try {
     if (rawData.openMeteo) {
       const hourly = openMeteoAPI.formatHourlyData(rawData.openMeteo, 168);
@@ -661,6 +882,13 @@ function buildRenderData(rawData, units) {
             : units.temperature === "F"
             ? (tC * 9) / 5 + 32
             : tC;
+        const dewPointRaw = typeof h.dewPoint === "number" ? h.dewPoint : null;
+        const dewPoint =
+          dewPointRaw === null
+            ? null
+            : units.temperature === "F"
+            ? (dewPointRaw * 9) / 5 + 32
+            : dewPointRaw;
         // Wind conversion: m/s -> km/h (multiply by 3.6) or m/s -> mph (multiply by 2.237)
         let wind = null;
         if (wind_mps !== null) {
@@ -687,6 +915,7 @@ function buildRenderData(rawData, units) {
           temperature: temp,
           windSpeed: wind,
           feelsLike: feels,
+          dewPoint,
         });
       });
 
@@ -714,8 +943,10 @@ function buildRenderData(rawData, units) {
         const map = new Map();
         hourlyArray.forEach((h) => {
           try {
-            const d = new Date(h.time);
-            const dateKey = d.toISOString().split("T")[0];
+            const dateKey =
+              typeof h.time === "string" && h.time.includes("T")
+                ? h.time.split("T")[0]
+                : new Date(h.time).toISOString().split("T")[0];
             if (!map.has(dateKey)) map.set(dateKey, []);
             map.get(dateKey).push(h);
           } catch (e) {
@@ -730,6 +961,10 @@ function buildRenderData(rawData, units) {
         return arr.slice(0, maxDays);
       }
       result.openMeteo.byDay = groupHourlyByDay(convertedHourly, 7);
+      result.openMeteo.dayInsights = buildDayInsights(
+        result.openMeteo.byDay,
+        convertedDaily
+      );
     }
 
     if (rawData.brightSky) {

@@ -4,7 +4,7 @@ class OpenMeteoAPI {
   constructor() {
     this.baseUrl = API_ENDPOINTS.OPEN_METEO.BASE;
     this.timeout = API_ENDPOINTS.OPEN_METEO.TIMEOUT;
-    this.name = 'Open-Meteo';
+    this.name = "Open-Meteo";
   }
 
   /**
@@ -23,9 +23,12 @@ class OpenMeteoAPI {
 
       // Prüfe Cache
       const cacheKey = `openmeteo_${latitude}_${longitude}`;
-      const cached = weatherCache.getForecast(`${latitude}_${longitude}`, 'openmeteo');
+      const cached = weatherCache.getForecast(
+        `${latitude}_${longitude}`,
+        "openmeteo"
+      );
       if (cached) {
-        console.log('✅ Open-Meteo Cache Hit');
+        console.log("✅ Open-Meteo Cache Hit");
         return { data: cached, fromCache: true };
       }
 
@@ -36,7 +39,7 @@ class OpenMeteoAPI {
         hourly: API_ENDPOINTS.OPEN_METEO.PARAMS.hourly,
         daily: API_ENDPOINTS.OPEN_METEO.PARAMS.daily,
         timezone: API_ENDPOINTS.OPEN_METEO.PARAMS.timezone,
-        forecast_days: API_ENDPOINTS.OPEN_METEO.PARAMS.forecast_days
+        forecast_days: API_ENDPOINTS.OPEN_METEO.PARAMS.forecast_days,
       });
 
       const url = `${this.baseUrl}?${params.toString()}`;
@@ -52,7 +55,7 @@ class OpenMeteoAPI {
           response = await safeApiFetch(url, {}, this.timeout);
           data = await response.json();
           // Validiere Response
-          const validation = validateApiResponse(data, 'openmeteo');
+          const validation = validateApiResponse(data, "openmeteo");
           if (!validation.valid) {
             throw new Error(validation.error);
           }
@@ -62,15 +65,17 @@ class OpenMeteoAPI {
           attempt += 1;
           const isLast = attempt >= maxAttempts;
           // Wenn HTTP 4xx (client error) oder andere nicht-transiente Fehler, don't retry
-          const msg = (err && err.message) ? err.message : '';
+          const msg = err && err.message ? err.message : "";
           const isClientError = /HTTP Fehler 4\d\d|404|400|429/.test(msg);
           if (isClientError || isLast) {
             throw err;
           }
           // Warte etwas (exponential backoff)
           const waitMs = 200 * Math.pow(2, attempt - 1);
-          await new Promise(r => setTimeout(r, waitMs));
-          console.warn(`Open-Meteo Versuch ${attempt} fehlgeschlagen, erneut in ${waitMs}ms...`);
+          await new Promise((r) => setTimeout(r, waitMs));
+          console.warn(
+            `Open-Meteo Versuch ${attempt} fehlgeschlagen, erneut in ${waitMs}ms...`
+          );
         }
       }
 
@@ -78,19 +83,19 @@ class OpenMeteoAPI {
       console.log(`✅ Open-Meteo erfolgreich (${duration}ms)`);
 
       // Speichere im Cache
-      weatherCache.setForecast(`${latitude}_${longitude}`, 'openmeteo', data);
+      weatherCache.setForecast(`${latitude}_${longitude}`, "openmeteo", data);
 
       return {
         data,
         fromCache: false,
         duration,
-        source: 'open-meteo'
+        source: "open-meteo",
       };
     } catch (error) {
       console.error(`❌ Open-Meteo Fehler: ${error.message}`);
       return {
         error: error.message,
-        source: 'open-meteo'
+        source: "open-meteo",
       };
     }
   }
@@ -109,6 +114,16 @@ class OpenMeteoAPI {
     const codes = data.hourly.weathercode?.slice(0, hours) || [];
     const windspeed = data.hourly.windspeed_10m?.slice(0, hours) || [];
     const humidity = data.hourly.relativehumidity_2m?.slice(0, hours) || [];
+    const windDir = data.hourly.winddirection_10m?.slice(0, hours) || [];
+    const dewpoint = data.hourly.dewpoint_2m?.slice(0, hours) || [];
+    const apparent = data.hourly.apparent_temperature?.slice(0, hours) || [];
+    const precipitation = data.hourly.precipitation?.slice(0, hours) || [];
+    const precipitationProb =
+      data.hourly.precipitation_probability?.slice(0, hours) || [];
+    const uvIndex = data.hourly.uv_index?.slice(0, hours) || [];
+    const uvClear = data.hourly.uv_index_clear_sky?.slice(0, hours) || [];
+    const pressure = data.hourly.pressure_msl?.slice(0, hours) || [];
+    const isDay = data.hourly.is_day?.slice(0, hours) || [];
 
     return times.map((time, i) => ({
       time,
@@ -116,7 +131,16 @@ class OpenMeteoAPI {
       weatherCode: codes[i],
       windSpeed: windspeed[i],
       humidity: humidity[i],
-      emoji: this._getWeatherEmoji(codes[i])
+      windDirection: windDir[i],
+      dewPoint: dewpoint[i],
+      apparentTemperature: apparent[i],
+      precipitation: precipitation[i],
+      precipitationProbability: precipitationProb[i],
+      uvIndex: uvIndex[i],
+      uvIndexClearSky: uvClear[i],
+      pressure: pressure[i],
+      isDay: isDay[i],
+      emoji: this._getWeatherEmoji(codes[i]),
     }));
   }
 
@@ -133,13 +157,28 @@ class OpenMeteoAPI {
     const codes = data.daily.weathercode.slice(0, days);
     const tempMax = data.daily.temperature_2m_max.slice(0, days);
     const tempMin = data.daily.temperature_2m_min.slice(0, days);
+    const sunrise = data.daily.sunrise?.slice(0, days) || [];
+    const sunset = data.daily.sunset?.slice(0, days) || [];
+    const uvMax = data.daily.uv_index_max?.slice(0, days) || [];
+    const uvClearMax = data.daily.uv_index_clear_sky_max?.slice(0, days) || [];
+    const precipitationSum = data.daily.precipitation_sum?.slice(0, days) || [];
+    const precipitationHours =
+      data.daily.precipitation_hours?.slice(0, days) || [];
 
     return dates.map((date, i) => ({
       date,
       weatherCode: codes[i],
       tempMax: tempMax[i],
       tempMin: tempMin[i],
-      emoji: this._getWeatherEmoji(codes[i])
+      sunrise: sunrise[i],
+      sunset: sunset[i],
+      sunriseTs: sunrise[i] ? new Date(sunrise[i]).getTime() : null,
+      sunsetTs: sunset[i] ? new Date(sunset[i]).getTime() : null,
+      uvIndexMax: uvMax[i],
+      uvIndexClearSkyMax: uvClearMax[i],
+      precipitationSum: precipitationSum[i],
+      precipitationHours: precipitationHours[i],
+      emoji: this._getWeatherEmoji(codes[i]),
     }));
   }
 
@@ -149,14 +188,14 @@ class OpenMeteoAPI {
    */
   _getWeatherEmoji(code) {
     const weatherInfo = WEATHER_CODES[code];
-    return weatherInfo ? weatherInfo.emoji : '❓';
+    return weatherInfo ? weatherInfo.emoji : "❓";
   }
 
   /**
    * Gibt Zeitzone aus API-Daten
    */
   getTimezone(data) {
-    return data?.timezone || 'Europe/Berlin';
+    return data?.timezone || "Europe/Berlin";
   }
 }
 

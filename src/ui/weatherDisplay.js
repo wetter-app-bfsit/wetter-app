@@ -175,6 +175,24 @@ class WeatherDisplayComponent {
     if (!this.forecastContainer) return;
 
     try {
+      const insights = window.appState?.renderData?.openMeteo?.dayInsights;
+      if (Array.isArray(insights) && insights.length) {
+        const cards = insights
+          .map((day, idx) => this._renderAdvancedForecastCard(day, idx))
+          .join("");
+        const hourlyMatrix = this._renderHourlyMatrix(insights);
+        this.forecastContainer.innerHTML = `
+        <section class="weather-forecast">
+          <h2>📅 7-Tage Vorhersage</h2>
+          <div class="forecast-grid advanced">
+            ${cards}
+          </div>
+        </section>
+        ${hourlyMatrix}
+      `;
+        return;
+      }
+
       const byDay = window.appState?.renderData?.openMeteo?.byDay || null;
       const days = byDay && byDay.length ? byDay : dailyData || [];
 
@@ -331,6 +349,249 @@ class WeatherDisplayComponent {
       this.forecastContainer.innerHTML =
         "<p>Fehler beim Laden der Vorhersage</p>";
     }
+  }
+
+  _renderAdvancedForecastCard(day, idx) {
+    const tempHigh = this._formatTempValue(day?.summary?.tempMax);
+    const tempLow = this._formatTempValue(day?.summary?.tempMin);
+    const dewPoint = this._formatTempValue(day?.summary?.dewPointAvg);
+    const humidity = this._formatPercentValue(day?.summary?.humidityAvg);
+    const precipSum =
+      typeof day?.summary?.precipitationSum === "number"
+        ? `${day.summary.precipitationSum.toFixed(1)} mm`
+        : "--";
+    const windSpeed = this._formatWindValue(day?.summary?.wind?.avgSpeed);
+    const condition = day?.summary?.condition || "Tagestrend";
+    const uvChip = this._renderUvChip(day?.summary?.uvIndexMax);
+    const sunTrack = this._renderSunTrack(day?.sun);
+    const precipBars = this._renderPrecipBars(day?.precipitationTimeline);
+    const windCompass = this._renderWindCompass(
+      day?.summary?.wind?.directionDeg,
+      day?.summary?.wind?.cardinal
+    );
+
+    return `
+      <article class="forecast-card advanced" aria-label="Vorhersage für ${
+        day?.label
+      }">
+        <header class="forecast-card-header">
+          <div>
+            <p class="forecast-date">${day?.label || ""}</p>
+            <small class="forecast-meta">${condition}</small>
+          </div>
+          <div class="forecast-emoji">${day?.emoji || "❓"}</div>
+        </header>
+        <div class="forecast-temps advanced">
+          <div><span class="label">Max</span><span class="value">${tempHigh}</span></div>
+          <div><span class="label">Min</span><span class="value">${tempLow}</span></div>
+          <div><span class="label">Taupunkt</span><span class="value">${dewPoint}</span></div>
+        </div>
+        <div class="forecast-metrics">
+          <div class="metric-block">
+            <span class="metric-label">Wind</span>
+            ${windCompass}
+            <span class="metric-value">${windSpeed}</span>
+          </div>
+          <div class="metric-block">
+            <span class="metric-label">Feuchtigkeit</span>
+            <span class="metric-value">${humidity}</span>
+          </div>
+          <div class="metric-block">
+            <span class="metric-label">Niederschlag</span>
+            <span class="metric-value">${precipSum}</span>
+          </div>
+          <div class="metric-block">
+            <span class="metric-label">UV</span>
+            ${uvChip}
+          </div>
+        </div>
+        ${sunTrack}
+        <div class="precip-timeline" aria-label="Niederschlag pro Stunde">
+          ${precipBars}
+        </div>
+      </article>
+    `;
+  }
+
+  _renderWindCompass(directionDeg, cardinal) {
+    if (typeof directionDeg !== "number" || Number.isNaN(directionDeg)) {
+      return '<div class="wind-compass is-empty">--</div>';
+    }
+    const label = cardinal || `${Math.round(directionDeg)}°`;
+    return `
+      <div class="wind-compass" aria-label="Windrichtung ${label}">
+        <span class="wind-compass-rose"></span>
+        <span class="wind-compass-arrow" style="transform: rotate(${directionDeg}deg);"></span>
+        <span class="wind-compass-label">${label}</span>
+      </div>
+    `;
+  }
+
+  _renderSunTrack(sun) {
+    if (!sun || (!sun.sunrise && !sun.sunset)) return "";
+    const sunrise = this._formatTimeLabel(sun.sunrise) || "--:--";
+    const sunset = this._formatTimeLabel(sun.sunset) || "--:--";
+    const start =
+      typeof sun.sunrisePercent === "number" ? sun.sunrisePercent : 0;
+    const end = typeof sun.sunsetPercent === "number" ? sun.sunsetPercent : 100;
+    const daylight =
+      typeof sun.daylightMinutes === "number"
+        ? `${Math.floor(sun.daylightMinutes / 60)}h ${
+            sun.daylightMinutes % 60
+          }m Licht`
+        : "";
+    return `
+      <div class="sun-track">
+        <div class="sun-track-times">
+          <span>🌅 ${sunrise}</span>
+          <span>🌇 ${sunset}</span>
+        </div>
+        <div class="sun-track-bar">
+          <span class="sun-track-daylight" style="--sunrise:${start}%; --sunset:${end}%;"></span>
+        </div>
+        ${daylight ? `<small class="sun-track-label">${daylight}</small>` : ""}
+      </div>
+    `;
+  }
+
+  _renderPrecipBars(timeline = []) {
+    if (!Array.isArray(timeline) || !timeline.length) {
+      return '<div class="precip-bars empty">Keine Daten</div>';
+    }
+    return `
+      <div class="precip-bars">
+        ${timeline
+          .slice(0, 24)
+          .map((slot) => {
+            const amount = typeof slot.amount === "number" ? slot.amount : 0;
+            const prob =
+              typeof slot.probability === "number"
+                ? `${slot.probability}%`
+                : "";
+            const capped = Math.min(amount, 5);
+            const height = (capped / 5) * 100;
+            const classes = ["precip-bar"];
+            if (slot.isDay === 0) classes.push("is-night");
+            return `<span class="${classes.join(
+              " "
+            )}" style="--precip-height:${height}%;" title="${
+              slot.hour
+            }:00 · ${amount.toFixed(1)}mm ${prob}"></span>`;
+          })
+          .join("")}
+      </div>
+    `;
+  }
+
+  _renderUvChip(value) {
+    if (typeof value !== "number" || Number.isNaN(value)) {
+      return '<span class="uv-chip uv-unknown">--</span>';
+    }
+    let severity = "low";
+    let label = "niedrig";
+    if (value >= 8) {
+      severity = "extreme";
+      label = "sehr hoch";
+    } else if (value >= 6) {
+      severity = "high";
+      label = "hoch";
+    } else if (value >= 3) {
+      severity = "moderate";
+      label = "mittel";
+    }
+    return `<span class="uv-chip uv-${severity}">UV ${value.toFixed(
+      1
+    )} · ${label}</span>`;
+  }
+
+  _renderHourlyMatrix(days) {
+    if (!Array.isArray(days) || !days.length) return "";
+    const headerCells = Array.from({ length: 24 }, (_, hour) => {
+      const label = hour.toString().padStart(2, "0");
+      return `<span class="matrix-cell matrix-header-cell">${label}</span>`;
+    }).join("");
+    const rows = days.map((day) => this._renderHourlyMatrixRow(day)).join("");
+    return `
+      <section class="hourly-matrix">
+        <h3>🕒 7×24 Stundenraster</h3>
+        <div class="hourly-matrix-grid">
+          <div class="hourly-matrix-row matrix-header">
+            <div class="matrix-day-label">Tag</div>
+            <div class="matrix-hour-cells">${headerCells}</div>
+          </div>
+          ${rows}
+        </div>
+      </section>
+    `;
+  }
+
+  _renderHourlyMatrixRow(day) {
+    const cells = (
+      day?.hourGrid ||
+      Array.from({ length: 24 }, (_, idx) => ({
+        hour: idx,
+      }))
+    )
+      .map((slot) => {
+        const temp =
+          typeof slot.temperature === "number"
+            ? `${Math.round(slot.temperature)}°`
+            : "–";
+        const prob =
+          typeof slot.precipitationProbability === "number"
+            ? `<small>${slot.precipitationProbability}%</small>`
+            : "";
+        const classes = ["matrix-cell"];
+        if (slot.isDay === 0) classes.push("is-night");
+        if (typeof slot.precipitation === "number" && slot.precipitation > 0) {
+          classes.push("has-rain");
+        }
+        const emoji = slot.emoji || "·";
+        return `<span class="${classes.join(" ")}" title="${day?.label || ""} ${
+          slot.hour
+        }:00 · ${temp}">
+            <span class="matrix-emoji">${emoji}</span>
+            <span class="matrix-temp">${temp}</span>
+            ${prob}
+          </span>`;
+      })
+      .join("");
+
+    return `
+      <div class="hourly-matrix-row">
+        <div class="matrix-day-label">${day?.label || ""}</div>
+        <div class="matrix-hour-cells">${cells}</div>
+      </div>
+    `;
+  }
+
+  _formatTempValue(value) {
+    if (typeof value !== "number" || Number.isNaN(value)) return "--";
+    const unit = window.appState?.units?.temperature || "C";
+    return `${Math.round(value)}°${unit}`;
+  }
+
+  _formatWindValue(value) {
+    if (typeof value !== "number" || Number.isNaN(value)) return "--";
+    const unit = window.appState?.units?.wind || "km/h";
+    const formatted = unit === "m/s" ? value.toFixed(1) : Math.round(value);
+    const suffix = unit === "mph" ? " mph" : unit === "m/s" ? " m/s" : " km/h";
+    return `${formatted}${suffix}`;
+  }
+
+  _formatPercentValue(value) {
+    if (typeof value !== "number" || Number.isNaN(value)) return "--";
+    return `${Math.round(value)}%`;
+  }
+
+  _formatTimeLabel(iso) {
+    if (!iso) return "";
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleTimeString("de-DE", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   }
 
   /**

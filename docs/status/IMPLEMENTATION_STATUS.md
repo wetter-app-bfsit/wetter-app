@@ -114,6 +114,17 @@
 - Subscription persistence
 - Test push functionality from dashboard
 
+### 11. Advanced Forecast Insights (Task 14)
+
+- **Files**: `src/app.js`, `src/api/weather.js`, `src/ui/weatherDisplay.js`, `src/style.css`
+- **Features**:
+  - 7×24 Stundenmatrix mit Icons, Temperatur und Regenwahrscheinlichkeit
+  - Tageskarten mit High/Low, Taupunkt, Feuchte, UV-Badge und Windkompass
+  - Sonnenbogen (Sonnenauf/-untergang, Tageslichtdauer) und Niederschlags-Balkendiagramm
+  - Erweiterte Datenaufbereitung (`buildRenderData`) für Taupunkt, UV, Niederschlag, Windrichtung
+  - High-contrast Styles für Dark/Light Mode
+- **Status:** Restliche UX-Anforderungen (Lesbarkeit, Zusatzmetriken, Visualisierung) sind komplett umgesetzt.
+
 ---
 
 ## ✅ STATUS
@@ -345,6 +356,19 @@ wetter-app-main/
 
 Total: 40+ production files, fully documented, tested, and ready.
 ```
+
+### API Capability Audit (November 2025)
+
+| Metric / Visualisierung            | Datenquelle                                                                  | Zusätzlicher API-Key nötig? | Hinweise                                            |
+| ---------------------------------- | ---------------------------------------------------------------------------- | --------------------------- | --------------------------------------------------- |
+| Taupunkt (stündlich + Tagesmittel) | Open-Meteo `dewpoint_2m`                                                     | Nein                        | In `buildRenderData` konvertiert auf Nutzer-Einheit |
+| UV Index + Clear-Sky Vergleich     | Open-Meteo `uv_index`, `uv_index_clear_sky`, `uv_index_max`                  | Nein                        | UI-Badges klassifizieren niedrig → extrem           |
+| Windkompass & Geschwindigkeit      | Open-Meteo `windspeed_10m`, `winddirection_10m`                              | Nein                        | Richtungsvektor-Ø + Kompass ohne Zusatzdienst       |
+| Niederschlags-Balken + Summen      | Open-Meteo `precipitation`, `precipitation_probability`, `precipitation_sum` | Nein                        | 24-Balken Timeline deckt alle Stunden ab            |
+| Sonnenbogen (Sonnenauf/untergang)  | Open-Meteo `sunrise`, `sunset`                                               | Nein                        | Prozentuale Tageslichtdarstellung lokal berechnet   |
+| 7×24 Stundenmatrix                 | Bereits geladene `hourly` Daten (168h)                                       | Nein                        | Kein zusätzlicher Request erforderlich              |
+
+**Ergebnis:** Alle neu visualisierten Kennzahlen stammen aus bestehenden Open-Meteo Antworten; weitere API-Accounts oder Keys sind nicht notwendig.
 
 ### Next Steps (Optional Enhancements)
 
