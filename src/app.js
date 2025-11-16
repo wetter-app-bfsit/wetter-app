@@ -1554,7 +1554,11 @@ function initApp() {
   const weatherAlerts = new WeatherAlerts("weather-alerts");
   const historicalChart = new HistoricalChart("historical-chart");
   const analytics = new Analytics();
+  weatherMap.bindToolbar("#map-layer-toolbar");
+  const mapInspector = new MapDataInspector("map-inspector");
+  weatherMap.attachInspector(mapInspector);
   window.weatherMap = weatherMap;
+  window.mapInspector = mapInspector;
 
   // Log analytics events
   window.logAnalyticsEvent = (type, data) => analytics.logEvent(type, data);

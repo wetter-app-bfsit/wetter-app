@@ -16,6 +16,7 @@ class WeatherMap {
     this.layerControl = null;
     this.overlayLookup = new Map();
     this.overlayConfigs = this._buildOverlayConfig();
+    this.toolbarConfigs = this._buildToolbarConfig();
     this.statusEl = null;
     this.noticeEl = null;
     this.currentOverlay = null;
@@ -23,6 +24,11 @@ class WeatherMap {
     this.rainViewerFetchedAt = 0;
     this.rainViewerPromise = null;
     this.overlayEventsBound = false;
+    this.overlayLayerByKey = new Map();
+    this.toolbarEl = null;
+    this.toolbarActiveKey = null;
+    this.inspector = null;
+    this._toolbarHandler = null;
   }
 
   init(lat, lon, city) {
@@ -63,6 +69,9 @@ class WeatherMap {
     ).addTo(this.map);
 
     this.refreshOverlays();
+    if (this.inspector && typeof this.inspector.bindToMap === "function") {
+      this.inspector.bindToMap(this);
+    }
   }
 
   _setMarker(lat, lon, city) {
@@ -102,6 +111,115 @@ class WeatherMap {
         template:
           "https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid={API_KEY}",
       },
+      {
+        key: "owm-precip",
+        label: "Niederschlag (OWM)",
+        provider: "OpenWeatherMap",
+        requiresKey: true,
+        template:
+          "https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid={API_KEY}",
+      },
+      {
+        key: "owm-wind",
+        label: "Wind (OWM)",
+        provider: "OpenWeatherMap",
+        requiresKey: true,
+        template:
+          "https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid={API_KEY}",
+      },
+      {
+        key: "owm-pressure",
+        label: "Luftdruck (OWM)",
+        provider: "OpenWeatherMap",
+        requiresKey: true,
+        template:
+          "https://tile.openweathermap.org/map/pressure_new/{z}/{x}/{y}.png?appid={API_KEY}",
+      },
+      {
+        key: "owm-snow",
+        label: "Schnee (OWM)",
+        provider: "OpenWeatherMap",
+        requiresKey: true,
+        template:
+          "https://tile.openweathermap.org/map/snow_new/{z}/{x}/{y}.png?appid={API_KEY}",
+      },
+    ];
+  }
+
+  _buildToolbarConfig() {
+    return [
+      {
+        key: "temp",
+        label: "Temperatur-Layer",
+        icon: "🌡️",
+        overlayKey: "owm-temp",
+        inspectorMode: "temperature",
+      },
+      {
+        key: "radar",
+        label: "Radar + Regen",
+        icon: "🌧️",
+        overlayKey: "radar",
+        inspectorMode: "precipitation",
+      },
+      {
+        key: "precip",
+        label: "Niederschlag",
+        icon: "💧",
+        overlayKey: "owm-precip",
+        inspectorMode: "precipitation",
+      },
+      {
+        key: "wind",
+        label: "Wind",
+        icon: "🌬️",
+        overlayKey: "owm-wind",
+        inspectorMode: "wind",
+      },
+      {
+        key: "clouds",
+        label: "Wolken",
+        icon: "☁️",
+        overlayKey: "owm-clouds",
+        inspectorMode: "clouds",
+      },
+      {
+        key: "pressure",
+        label: "Druck",
+        icon: "🧭",
+        overlayKey: "owm-pressure",
+      },
+      {
+        key: "snow",
+        label: "Winter",
+        icon: "❄️",
+        overlayKey: "owm-snow",
+        inspectorMode: "winter",
+      },
+      {
+        key: "humidity",
+        label: "Luftfeuchte",
+        icon: "💦",
+        inspectorMode: "humidity",
+      },
+      {
+        key: "visibility",
+        label: "Sichtweite",
+        icon: "🛰️",
+        inspectorMode: "visibility",
+      },
+      {
+        key: "dewpoint",
+        label: "Taupunkt",
+        icon: "🧊",
+        inspectorMode: "dewpoint",
+      },
+      {
+        key: "air",
+        label: "Luftqualität",
+        icon: "🫧",
+        inspectorMode: "air-quality",
+      },
     ];
   }
 
@@ -113,6 +231,7 @@ class WeatherMap {
     let pendingRainViewer = false;
 
     this.overlayLookup.clear();
+    this.overlayLayerByKey.clear();
 
     this.overlayConfigs.forEach((config) => {
       let url = config.url;
@@ -152,6 +271,7 @@ class WeatherMap {
 
       overlays[config.label] = layer;
       this.overlayLookup.set(layer, config);
+      this.overlayLayerByKey.set(config.key, layer);
     });
 
     if (this.layerControl) {
@@ -212,6 +332,97 @@ class WeatherMap {
             "RainViewer Radar derzeit nicht erreichbar" + suffix;
         }
       });
+    }
+  }
+
+  bindToolbar(toolbarSelector) {
+    const target =
+      typeof toolbarSelector === "string"
+        ? document.querySelector(toolbarSelector)
+        : toolbarSelector;
+    if (!target) return;
+    if (this.toolbarEl && this._toolbarHandler) {
+      this.toolbarEl.removeEventListener("click", this._toolbarHandler);
+    }
+    this.toolbarEl = target;
+    this.toolbarEl.innerHTML = this.toolbarConfigs
+      .map(
+        (config) => `
+          <button type="button" class="map-layer-btn" data-layer="${
+            config.key
+          }" title="${config.label}">
+            ${config.icon || "•"}
+          </button>
+        `
+      )
+      .join("");
+    this._toolbarHandler = (event) => {
+      const btn = event.target.closest(".map-layer-btn");
+      if (!btn) return;
+      const key = btn.dataset.layer;
+      this._handleToolbarSelection(key);
+    };
+    this.toolbarEl.addEventListener("click", this._toolbarHandler);
+  }
+
+  attachInspector(inspector) {
+    this.inspector = inspector;
+    if (inspector && typeof inspector.bindToMap === "function") {
+      inspector.bindToMap(this);
+    }
+  }
+
+  _handleToolbarSelection(key) {
+    const config = this.toolbarConfigs.find((entry) => entry.key === key);
+    if (!config) return;
+    if (config.overlayKey) {
+      this._activateOverlayLayer(config.overlayKey);
+    }
+    if (config.inspectorMode && this.inspector) {
+      this.inspector.setMode(config.inspectorMode);
+    }
+    this._highlightToolbarSelection(key);
+  }
+
+  _activateOverlayLayer(key) {
+    if (!this.map) return;
+    const targetLayer = this.overlayLayerByKey.get(key);
+    if (!targetLayer) {
+      this.refreshOverlays();
+      return;
+    }
+    if (
+      this.currentOverlay?.layer &&
+      this.map.hasLayer(this.currentOverlay.layer) &&
+      this.currentOverlay.layer !== targetLayer
+    ) {
+      this.map.removeLayer(this.currentOverlay.layer);
+    }
+    if (!this.map.hasLayer(targetLayer)) {
+      targetLayer.addTo(this.map);
+    }
+    const config = this.overlayConfigs.find((entry) => entry.key === key);
+    this.currentOverlay = config
+      ? Object.assign({ layer: targetLayer }, config)
+      : { layer: targetLayer };
+    this._highlightToolbarSelectionByOverlay(key);
+    this._updateOverlayStatus();
+  }
+
+  _highlightToolbarSelection(key) {
+    if (!this.toolbarEl) return;
+    this.toolbarActiveKey = key;
+    this.toolbarEl.querySelectorAll(".map-layer-btn").forEach((btn) => {
+      btn.classList.toggle("is-active", btn.dataset.layer === key);
+    });
+  }
+
+  _highlightToolbarSelectionByOverlay(overlayKey) {
+    const toolbarEntry = this.toolbarConfigs.find(
+      (entry) => entry.overlayKey === overlayKey
+    );
+    if (toolbarEntry) {
+      this._highlightToolbarSelection(toolbarEntry.key);
     }
   }
 
@@ -297,12 +508,18 @@ class WeatherMap {
   _handleOverlayAdd(layer) {
     const config = this.overlayLookup.get(layer);
     this.currentOverlay = config ? Object.assign({ layer }, config) : null;
+    if (config?.key) {
+      this._highlightToolbarSelectionByOverlay(config.key);
+    }
     this._updateOverlayStatus();
   }
 
   _handleOverlayRemove(layer) {
     if (this.currentOverlay && layer === this.currentOverlay.layer) {
       this.currentOverlay = null;
+    }
+    if (this.toolbarActiveKey) {
+      this._highlightToolbarSelection(null);
     }
     this._updateOverlayStatus();
   }
@@ -371,6 +588,255 @@ class WeatherMap {
     } else {
       this.noticeEl.textContent = `${config.label} ist aktuell nicht verfuegbar.`;
     }
+  }
+}
+
+class MapDataInspector {
+  constructor(outputId) {
+    this.outputId = outputId;
+    this.outputEl = null;
+    this.currentMode = "temperature";
+    this.cache = new Map();
+    this.hoverTimer = null;
+    this.latestData = null;
+    this.weatherMap = null;
+    this._mousemoveHandler = null;
+    this._mouseoutHandler = null;
+  }
+
+  bindToMap(weatherMap) {
+    this.weatherMap = weatherMap;
+    this.outputEl = document.getElementById(this.outputId);
+    if (!weatherMap?.map) return;
+    if (this._mousemoveHandler) {
+      weatherMap.map.off("mousemove", this._mousemoveHandler);
+    }
+    if (this._mouseoutHandler) {
+      weatherMap.map.off("mouseout", this._mouseoutHandler);
+    }
+    this._mousemoveHandler = (event) => this._handlePointer(event.latlng);
+    this._mouseoutHandler = () => this._handlePointer(null);
+    weatherMap.map.on("mousemove", this._mousemoveHandler);
+    weatherMap.map.on("mouseout", this._mouseoutHandler);
+  }
+
+  setMode(mode) {
+    if (mode) {
+      this.currentMode = mode;
+      this._render();
+    }
+  }
+
+  _handlePointer(latlng) {
+    if (!latlng) {
+      this.pointer = null;
+      if (this.hoverTimer) {
+        clearTimeout(this.hoverTimer);
+        this.hoverTimer = null;
+      }
+      return;
+    }
+    this.pointer = latlng;
+    if (this.hoverTimer) {
+      clearTimeout(this.hoverTimer);
+    }
+    this.hoverTimer = setTimeout(() => this._fetchData(latlng), 180);
+  }
+
+  async _fetchData(latlng) {
+    const lat = latlng.lat;
+    const lon = latlng.lng;
+    const roundedLat = lat.toFixed(2);
+    const roundedLon = lon.toFixed(2);
+    const cacheKey = `${roundedLat},${roundedLon}`;
+    const cached = this.cache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < 10 * 60 * 1000) {
+      this.latestData = cached.data;
+      this._render();
+      return;
+    }
+    try {
+      const weatherUrl = new URL("https://api.open-meteo.com/v1/forecast");
+      weatherUrl.search = new URLSearchParams({
+        latitude: roundedLat,
+        longitude: roundedLon,
+        current:
+          "temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,cloud_cover,wind_speed_10m,wind_direction_10m,visibility,is_day,pressure_msl,dew_point_2m",
+        hourly: "snowfall,precipitation_probability,uv_index",
+        timezone: "auto",
+      }).toString();
+      const airUrl = new URL(
+        "https://air-quality-api.open-meteo.com/v1/air-quality"
+      );
+      airUrl.search = new URLSearchParams({
+        latitude: roundedLat,
+        longitude: roundedLon,
+        hourly: "pm10,pm2_5,european_aqi",
+        timezone: "auto",
+      }).toString();
+
+      const [weatherRes, airRes] = await Promise.all([
+        fetch(weatherUrl),
+        fetch(airUrl),
+      ]);
+      const weather = weatherRes.ok ? await weatherRes.json() : null;
+      const air = airRes.ok ? await airRes.json() : null;
+      this.latestData = this._normalizeData(
+        weather,
+        air,
+        roundedLat,
+        roundedLon
+      );
+      this.cache.set(cacheKey, {
+        data: this.latestData,
+        timestamp: Date.now(),
+      });
+      this._render();
+    } catch (error) {
+      console.warn("MapDataInspector", error);
+    }
+  }
+
+  _normalizeData(weather, air, lat, lon) {
+    if (!weather?.current) return null;
+    const current = weather.current;
+    const hourly = weather.hourly || {};
+    const airHourly = air?.hourly || {};
+    const pickHourly = (key) =>
+      Array.isArray(hourly[key]) && hourly[key].length ? hourly[key][0] : null;
+    const pickAir = (key) =>
+      Array.isArray(airHourly[key]) && airHourly[key].length
+        ? airHourly[key][0]
+        : null;
+    return {
+      label: `${lat} deg, ${lon} deg`,
+      temperature: current.temperature_2m,
+      feelsLike: current.apparent_temperature,
+      precipitation: current.precipitation,
+      precipitationProbability: pickHourly("precipitation_probability"),
+      windSpeed: current.wind_speed_10m,
+      windDirection: current.wind_direction_10m,
+      clouds: current.cloud_cover,
+      humidity: current.relative_humidity_2m,
+      visibility: current.visibility,
+      dewPoint: current.dew_point_2m,
+      pressure: current.pressure_msl,
+      snowfall: pickHourly("snowfall"),
+      uvIndex: pickHourly("uv_index"),
+      airQuality: {
+        aqi: pickAir("european_aqi"),
+        pm25: pickAir("pm2_5"),
+        pm10: pickAir("pm10"),
+      },
+    };
+  }
+
+  _buildMetricList(data) {
+    return [
+      {
+        key: "temperature",
+        label: "Temperatur",
+        value: this._formatTemp(data.temperature),
+      },
+      {
+        key: "feels",
+        label: "Gefühlt",
+        value: this._formatTemp(data.feelsLike),
+      },
+      {
+        key: "precipitation",
+        label: "Niederschlag",
+        value: `${this._formatValue(
+          data.precipitation,
+          "mm/h",
+          2
+        )} (${this._formatValue(data.precipitationProbability, "%")})`,
+      },
+      {
+        key: "wind",
+        label: "Wind",
+        value: `${this._formatValue(data.windSpeed, " km/h")} ${
+          data.windDirection
+            ? `(dir ${Math.round(data.windDirection)} deg)`
+            : ""
+        }`.trim(),
+      },
+      {
+        key: "clouds",
+        label: "Wolken",
+        value: this._formatValue(data.clouds, "%"),
+      },
+      {
+        key: "humidity",
+        label: "Luftfeuchte",
+        value: this._formatValue(data.humidity, "%"),
+      },
+      {
+        key: "visibility",
+        label: "Sichtweite",
+        value: this._formatValue(data.visibility / 1000, " km", 1),
+      },
+      {
+        key: "dewpoint",
+        label: "Taupunkt",
+        value: this._formatTemp(data.dewPoint),
+      },
+      {
+        key: "pressure",
+        label: "Luftdruck",
+        value: this._formatValue(data.pressure, " hPa", 0),
+      },
+      {
+        key: "uv",
+        label: "UV",
+        value: this._formatValue(data.uvIndex, "", 1),
+      },
+      {
+        key: "winter",
+        label: "Winter",
+        value: this._formatValue(data.snowfall, " mm"),
+      },
+      {
+        key: "air-quality",
+        label: "AQI",
+        value: this._formatValue(data.airQuality?.aqi, ""),
+      },
+    ];
+  }
+
+  _render() {
+    if (!this.outputEl) return;
+    if (!this.latestData) {
+      this.outputEl.innerHTML =
+        '<p class="map-inspector-empty">Bewege die Maus über die Karte, um Messwerte zu sehen.</p>';
+      return;
+    }
+    const metrics = this._buildMetricList(this.latestData);
+    const items = metrics
+      .map(
+        (metric) => `
+          <li data-focus="${metric.key === this.currentMode}">
+            <span>${metric.label}</span>
+            <em>${metric.value}</em>
+          </li>
+        `
+      )
+      .join("");
+    this.outputEl.innerHTML = `
+      <h4>Daten · ${this.latestData.label}</h4>
+      <ul>${items}</ul>
+    `;
+  }
+
+  _formatValue(value, suffix = "", digits = 0) {
+    if (value === null || value === undefined || Number.isNaN(value)) {
+      return "–";
+    }
+    return `${Number(value).toFixed(digits)}${suffix}`;
+  }
+
+  _formatTemp(value) {
+    return this._formatValue(value, " degC", 1);
   }
 }
 
@@ -592,7 +1058,7 @@ class HistoricalChart {
       const endDate = new Date();
       endDate.setDate(endDate.getDate() - 1);
       const startDate = new Date();
-      startDate.setDate(startDate.getDate() - 8);
+      startDate.setDate(startDate.getDate() - 400);
 
       const start = startDate.toISOString().split("T")[0];
       const end = endDate.toISOString().split("T")[0];
@@ -638,7 +1104,11 @@ class HistoricalChart {
       return;
     }
 
-    const labels = entries.map((entry) => entry.label);
+    const breakdown = this._computeHistoricalBreakdown(entries);
+    const chartEntries = breakdown.chartEntries.length
+      ? breakdown.chartEntries
+      : entries;
+    const labels = chartEntries.map((entry) => entry.label);
     container.innerHTML = `
       <div class="historical-chart-canvas">
         <canvas id="historical-chart-canvas" aria-label="Historische Wetterdaten" role="img"></canvas>
@@ -666,7 +1136,7 @@ class HistoricalChart {
         datasets: [
           {
             label: "Max Temp (degC)",
-            data: entries.map((entry) => entry.max),
+            data: chartEntries.map((entry) => entry.max),
             borderColor: "#dc3545",
             backgroundColor: "rgba(220,53,69,0.1)",
             tension: 0.35,
@@ -675,7 +1145,7 @@ class HistoricalChart {
           },
           {
             label: "Min Temp (degC)",
-            data: entries.map((entry) => entry.min),
+            data: chartEntries.map((entry) => entry.min),
             borderColor: "#007bff",
             backgroundColor: "rgba(0,123,255,0.1)",
             tension: 0.35,
@@ -685,7 +1155,7 @@ class HistoricalChart {
           {
             type: "bar",
             label: "Niederschlag (mm)",
-            data: entries.map((entry) => entry.rain || 0),
+            data: chartEntries.map((entry) => entry.rain || 0),
             backgroundColor: "rgba(0,150,136,0.35)",
             borderColor: "rgba(0,150,136,0.8)",
             borderWidth: 1,
@@ -720,10 +1190,20 @@ class HistoricalChart {
       },
     });
 
-    const stats = this._computeHistoricalStats(entries);
-    const summaryHtml = this._renderHistoricalSummary(stats, data.meta || {});
-    const tableHtml = this._renderHistoricalTable(entries, stats);
-    container.insertAdjacentHTML("beforeend", summaryHtml + tableHtml);
+    const stats = this._computeHistoricalStats(chartEntries);
+    const rangeLabel = this._describeRange(chartEntries);
+    const summaryHtml = this._renderHistoricalSummary(
+      stats,
+      data.meta || {},
+      rangeLabel
+    );
+    const monthlyHtml = this._renderMonthlyComparison(breakdown.monthlyBuckets);
+    const trendHtml = this._renderYearTrend(breakdown.yearTrend);
+    const tableHtml = this._renderHistoricalTable(chartEntries, stats);
+    container.insertAdjacentHTML(
+      "beforeend",
+      summaryHtml + monthlyHtml + trendHtml + tableHtml
+    );
   }
 
   _normalizeDailyEntries(daily) {
@@ -788,17 +1268,190 @@ class HistoricalChart {
     };
   }
 
-  _renderHistoricalSummary(stats, meta) {
+  _computeHistoricalBreakdown(entries) {
+    if (!Array.isArray(entries) || !entries.length) {
+      return { chartEntries: [], monthlyBuckets: [], yearTrend: [] };
+    }
+    const sorted = entries
+      .slice()
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+    const chartEntries = sorted.slice(-30);
+    const monthlyBuckets = this._aggregateMonthly(sorted);
+    const yearTrend = monthlyBuckets.slice(-12);
+    return { chartEntries, monthlyBuckets, yearTrend };
+  }
+
+  _aggregateMonthly(entries) {
+    const store = new Map();
+    entries.forEach((entry) => {
+      if (!entry?.date) return;
+      const key = entry.date.slice(0, 7);
+      if (!store.has(key)) {
+        store.set(key, {
+          key,
+          sumMax: 0,
+          countMax: 0,
+          sumMin: 0,
+          countMin: 0,
+          totalRain: 0,
+        });
+      }
+      const bucket = store.get(key);
+      if (typeof entry.max === "number") {
+        bucket.sumMax += entry.max;
+        bucket.countMax += 1;
+      }
+      if (typeof entry.min === "number") {
+        bucket.sumMin += entry.min;
+        bucket.countMin += 1;
+      }
+      if (typeof entry.rain === "number") {
+        bucket.totalRain += entry.rain;
+      }
+    });
+
+    return Array.from(store.entries())
+      .map(([key, bucket]) => {
+        const date = new Date(`${key}-01T00:00:00`);
+        const label = Number.isNaN(date.getTime())
+          ? key
+          : date.toLocaleDateString("de-DE", {
+              month: "short",
+              year: "2-digit",
+            });
+        const avgMax = bucket.countMax ? bucket.sumMax / bucket.countMax : null;
+        const avgMin = bucket.countMin ? bucket.sumMin / bucket.countMin : null;
+        const avgTemp =
+          avgMax !== null && avgMin !== null ? (avgMax + avgMin) / 2 : avgMax;
+        return {
+          key,
+          label,
+          avgMax,
+          avgMin,
+          avgTemp,
+          totalRain: bucket.totalRain,
+          order: date.getTime() || Date.now(),
+        };
+      })
+      .sort((a, b) => a.order - b.order);
+  }
+
+  _renderMonthlyComparison(buckets = []) {
+    const recent = buckets.slice(-4);
+    if (!recent.length) return "";
+    const cards = recent
+      .map(
+        (bucket) => `
+          <article class="historical-summary-card monthly-card">
+            <span class="label">${bucket.label}</span>
+            <strong>${
+              this._formatValue(bucket.avgMax, " degC", 1) || "--"
+            }</strong>
+            <small>Min ${
+              this._formatValue(bucket.avgMin, " degC", 1) || "--"
+            } · Regen ${
+          this._formatValue(bucket.totalRain, " mm", 1) || "--"
+        }</small>
+          </article>
+        `
+      )
+      .join("");
+
+    return `
+      <section class="historical-monthly-grid">
+        <header>
+          <h4>Monatsvergleich</h4>
+          <small>Letzte ${recent.length} Monate</small>
+        </header>
+        <div class="historical-monthly-cards">${cards}</div>
+      </section>
+    `;
+  }
+
+  _renderYearTrend(buckets = []) {
+    const trendBuckets = buckets.slice(-12);
+    if (!trendBuckets.length) return "";
+    const sparkline = this._renderTrendSparkline(
+      trendBuckets.map((bucket) => bucket.avgTemp)
+    );
+    const rows = trendBuckets
+      .map(
+        (bucket) => `
+          <li>
+            <span>${bucket.label}</span>
+            <strong>${
+              this._formatValue(bucket.avgTemp, " degC", 1) || "--"
+            }</strong>
+            <em>${this._formatValue(bucket.totalRain, " mm", 1) || "--"}</em>
+          </li>
+        `
+      )
+      .join("");
+
+    return `
+      <section class="historical-trend-panel">
+        <header>
+          <h4>Jahrestrend</h4>
+          <small>Durchschnittliche Monatswerte</small>
+        </header>
+        ${sparkline}
+        <ul class="trend-list">${rows}</ul>
+      </section>
+    `;
+  }
+
+  _renderTrendSparkline(series = []) {
+    const sanitized = series
+      .map((value, index) => ({ value, index }))
+      .filter(
+        (entry) => typeof entry.value === "number" && !Number.isNaN(entry.value)
+      );
+    if (!sanitized.length) {
+      return '<div class="trend-sparkline trend-sparkline--empty">Keine Trenddaten</div>';
+    }
+    const minValue = Math.min(...sanitized.map((entry) => entry.value));
+    const maxValue = Math.max(...sanitized.map((entry) => entry.value));
+    const width = 200;
+    const height = 60;
+    const totalSteps = Math.max(sanitized.length - 1, 1);
+    const points = sanitized
+      .map((entry) => {
+        const x = (entry.index / totalSteps) * width;
+        const normalized =
+          maxValue === minValue
+            ? 0.5
+            : (entry.value - minValue) / (maxValue - minValue);
+        const y = height - normalized * height;
+        return `${x.toFixed(2)},${y.toFixed(2)}`;
+      })
+      .join(" ");
+    return `
+      <svg class="trend-sparkline" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+        <polyline points="${points}" fill="none" stroke="#007bff" stroke-width="2" stroke-linecap="round" />
+      </svg>
+    `;
+  }
+
+  _describeRange(entries) {
+    if (!Array.isArray(entries) || !entries.length) return "letzte Tage";
+    const first = entries[0]?.date;
+    const last = entries[entries.length - 1]?.date;
+    if (!first || !last) return "letzte Tage";
+    return `${this._formatDate(first)} – ${this._formatDate(last)}`;
+  }
+
+  _renderHistoricalSummary(stats, meta, rangeOverride) {
     const fmt = (value, suffix = " degC") =>
       typeof value === "number" ? `${value.toFixed(1)}${suffix}` : "";
     const rainFmt = (value) =>
       typeof value === "number" ? `${value.toFixed(1)} mm` : "";
     const hasRange = meta && meta.range && meta.range.start && meta.range.end;
-    const rangeText = hasRange
+    const fallbackRange = hasRange
       ? `${this._formatDate(meta.range.start)}  ${this._formatDate(
           meta.range.end
         )}`
       : "letzte Tage";
+    const rangeText = rangeOverride || fallbackRange;
     const provider = meta && meta.provider ? meta.provider : "Open-Meteo";
 
     return `
@@ -1048,6 +1701,7 @@ class Analytics {
 
 // Global exports
 window.WeatherMap = WeatherMap;
+window.MapDataInspector = MapDataInspector;
 window.WeatherAlerts = WeatherAlerts;
 window.HistoricalChart = HistoricalChart;
 window.Analytics = Analytics;

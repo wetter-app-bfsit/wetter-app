@@ -161,6 +161,17 @@
         </div>
       </section>
 
+      <!-- Daily Insight Graphs -->
+      <section
+        id="daily-insights"
+        class="insights-section"
+        aria-label="Tagesverlauf-Insights"
+      >
+        <div class="insights-empty" aria-live="polite">
+          <p>📈 Tagesverlauf steht nach einer Ortssuche bereit.</p>
+        </div>
+      </section>
+
       <!-- Hourly Forecast Section -->
       <section
         id="hourly-section"
@@ -252,6 +263,14 @@
         style="display: none"
       >
         <h2>🗺️ Wetterkarte</h2>
+        <div class="map-toolbar" role="toolbar" aria-label="Karten-Layer">
+          <div id="map-layer-toolbar" class="map-layer-toolbar"></div>
+          <div
+            id="map-inspector"
+            class="map-inspector"
+            aria-live="polite"
+          ></div>
+        </div>
         <div
           id="weather-map"
           style="
@@ -662,6 +681,15 @@
         </p>
       </footer>
     </main>
+
+    <!-- Day detail overlay -->
+    <div
+      id="day-detail-modal"
+      class="day-detail-modal"
+      aria-hidden="true"
+      role="dialog"
+      aria-label="Tagesdetails"
+    ></div>
 
     <!-- Modal Overlay -->
     <div id="modal-overlay" class="modal-overlay" role="presentation"></div>

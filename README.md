@@ -8,14 +8,14 @@ Eine moderne, responsive PWA-Wetter-Anwendung mit Dual-API-Support, Offline-Funk
 
 - **🌍 Ortssuche**: Per Nominatim Geocoding (OpenStreetMap)
 - **📡 Dual-API-System**: Open-Meteo (Hauptquelle) + BrightSky (Fallback) mit automatischer Retry-Logik
-- **📊 Detaillierte Vorhersagen**: Aktuelle Bedingungen, stündlich (24h), 7-Tage-Vorhersage mit Stunden-Details für die ersten 3 Tage
+- **📊 Detaillierte Vorhersagen**: Neues Hero-Dashboard mit Sonnenpfad, High/Low-Chips, Taupunkt-, Feuchte-, Wind-, Regen-, UV- und Druckkarten plus 24h-Stundenmatrix direkt im Tagespanel
 - **🔄 Offline-First PWA**: Service Worker, App-Shell-Caching, Offline-Modus
 - **🔔 Push-Benachrichtigungen**: Lokaler VAPID-basierter Push-Server inkl. Dashboard
 - **⭐ Favoriten**: Speichern, Reorder, Undo-Funktion
 - **🌡️ Einheiten-Toggle**: Temperatur (°C/°F) und Wind (m/s, km/h, mph) instant auf alle Komponenten angewendet
-- **🗺️ Wetterkarten** (optional): Leaflet + OpenStreetMap mit automatisch aktivierten RainViewer-Radar & OpenWeatherMap-Overlays (inkl. Status-Pills)
+- **🗺️ Wetterkarten** (optional): Leaflet + OpenStreetMap mit Toolbar, RainViewer-Radar, allen OWM-Overlays und Hover-basiertem MapDataInspector (Temperatur, Niederschlag, AQI u.v.m.)
 - **🚨 Wetterwarnungen**: Integration von MeteoAlarm/CAP-Feeds (kostenlos, kein Key)
-- **📈 Historische Daten**: Letzte 7 Tage Temperaturtrend (Meteostat/Open-Meteo)
+- **📈 Historische Daten**: 30-Tage-Chart, Monatsvergleich (letzte 4 Monate) und 12-Monats-Trend mit Sparkline & Regenaggregaten (Open-Meteo Archiv)
 - **📅 Prognose-Center**: 7-Tage-Kacheln mit einklappbaren Stunden-Details plus "Heute"-Timeline
 - **🌙 Hell/Dunkel-Modus**: CSS-Variablen-basiertes Theming
 - **♿ Barrierefreiheit**: WCAG 2.1 AA Kontrast, ARIA-Labels, Tastatur-Navigation

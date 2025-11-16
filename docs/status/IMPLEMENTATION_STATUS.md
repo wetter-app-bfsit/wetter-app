@@ -125,6 +125,16 @@
   - High-contrast Styles für Dark/Light Mode
 - **Status:** Restliche UX-Anforderungen (Lesbarkeit, Zusatzmetriken, Visualisierung) sind komplett umgesetzt.
 
+### 12. Insight Hero & Karteninspektor (Task 15)
+
+- **Files**: `src/ui/weatherDisplay.js`, `src/app.js`, `src/features.js`, `src/style.css`
+- **Features**:
+  - Neues "Current"-Hero mit Sunrise/Sunset-Bar, High/Low-Chips sowie Taupunkt, Feuchte, Regen, Wind, UV und Druck-Kacheln direkt unter der Ortsschlagzeile.
+  - Mehrquellen-Stundenvorhersage wird im dedizierten `#hourly-section` gerendert; Blöcke lassen sich pro Provider aktualisieren ohne die Seite zu duplizieren.
+  - Leaflet-Toolbar (`#map-layer-toolbar`) verknüpft Radar-, Temperatur-, Niederschlag- und Luftqualitätslayer mit dem neuen `MapDataInspector`, der Hover-Messwerte (Temp, Feuchte, AQI usw.) live von Open-Meteo/Air-Quality APIs nachlädt.
+  - Historische Ansicht umfasst jetzt 30-Tage-Chart, Monatsvergleich (letzte 4 Monate) und Jahrestrend (12 Monate) mit Inline-Sparkline sowie Tabellenhighlighting.
+- **Status:** Premium-Dashboard-Anforderungen (Detail-Einblicke + Kartenhover-Daten) sind abgedeckt.
+
 ---
 
 ## ✅ STATUS

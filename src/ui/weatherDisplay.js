@@ -6,60 +6,199 @@ class WeatherDisplayComponent {
     this.forecastContainer = document.getElementById(forecastContainerId);
     this.currentData = null;
     this.timeIntervalId = null;
+    this._forecastDetailHandlers = null;
+    this._detailEscapeHandler = null;
   }
-
-  /**
-   * Zeigt aktuelle Wetter-Daten an
-   * @param {object} weatherData - Aktuelle Wetterdaten
-   * @param {string} city - Stadtname
-   */
-  displayCurrent(weatherData, city) {
+  displayCurrent(weatherData, city = "Standort") {
     if (!this.currentContainer) return;
 
     try {
-      const html = `
-        <div class="weather-current">
-          <div class="location-header">
-               <h2 class="location-name">📍 ${this._escapeHtml(city)}</h2>
-               <div class="location-controls">
-                 <button id="favoriteToggle" class="btn-icon favorite-toggle" data-city="${this._escapeHtml(
-                   city
-                 )}" aria-label="Favorit hinzufügen">☆</button>
-                 <span class="location-time" id="current-time"></span>
-               </div>
-          </div>
+      if (!weatherData) {
+        this.showEmpty();
+        return;
+      }
 
+      const open = weatherData.openMeteo || {};
+      const bright = weatherData.brightSky || {};
+      const openHourly = Array.isArray(open.hourly) ? open.hourly : [];
+      const brightHourly = Array.isArray(bright.hourly) ? bright.hourly : [];
+      const primarySeries = openHourly.length ? openHourly : brightHourly;
+      const currentHour = primarySeries[0];
+
+      if (!currentHour) {
+        this.showError("Keine aktuellen Wetterdaten gefunden.");
+        return;
+      }
+
+      const daySnapshot = Array.isArray(open.dayInsights)
+        ? open.dayInsights[0]
+        : null;
+      const description =
+        daySnapshot?.summary?.condition ||
+        currentHour.description ||
+        "Aktuelle Bedingungen";
+      const feelsLike =
+        typeof currentHour.feelsLike === "number"
+          ? currentHour.feelsLike
+          : currentHour.apparentTemperature;
+      const dewPoint =
+        typeof currentHour.dewPoint === "number"
+          ? currentHour.dewPoint
+          : daySnapshot?.summary?.dewPointAvg;
+      const humidity =
+        typeof currentHour.humidity === "number"
+          ? currentHour.humidity
+          : daySnapshot?.summary?.humidityAvg;
+      const precipitationSum = daySnapshot?.summary?.precipitationSum;
+      const precipitationProb = Array.isArray(
+        daySnapshot?.precipitationTimeline
+      )
+        ? daySnapshot.precipitationTimeline.reduce((acc, slot) => {
+            if (typeof slot?.probability !== "number") return acc;
+            return Math.max(acc, slot.probability);
+          }, 0)
+        : currentHour.precipitationProbability || 0;
+      const uvIndex =
+        typeof daySnapshot?.summary?.uvIndexMax === "number"
+          ? daySnapshot.summary.uvIndexMax
+          : currentHour.uvIndex;
+      const windCardinal = daySnapshot?.summary?.wind?.cardinal;
+      const windDirection =
+        windCardinal ||
+        (typeof currentHour.windDirection === "number"
+          ? `${Math.round(currentHour.windDirection)} deg`
+          : null);
+
+      const highlightMetrics = [
+        {
+          label: "Taupunkt",
+          value: this._formatTempValue(dewPoint),
+          hint: "Ø Tagesmittel",
+        },
+        {
+          label: "Luftfeuchte",
+          value: this._formatPercentValue(humidity),
+          hint: "gemessen jetzt",
+        },
+        {
+          label: "Niederschlag",
+          value:
+            typeof precipitationSum === "number"
+              ? `${precipitationSum.toFixed(1)} mm`
+              : this._formatMetricValue(currentHour.precipitation, " mm", 1),
+          hint: `${Math.round(precipitationProb || 0)}% Wahrscheinlichkeit`,
+        },
+        {
+          label: "Wind",
+          value: this._formatWindValue(currentHour.windSpeed),
+          hint: windDirection || "--",
+        },
+        {
+          label: "UV Index",
+          value:
+            typeof uvIndex === "number" && !Number.isNaN(uvIndex)
+              ? uvIndex.toFixed(1)
+              : "--",
+          hint: "Peak heute",
+        },
+        {
+          label: "Luftdruck",
+          value: this._formatMetricValue(currentHour.pressure, " hPa", 0),
+          hint: "Meeresspiegeldruck",
+        },
+      ];
+
+      const sunriseSunset = this._renderSunTrack(daySnapshot?.sun);
+      const extremes = daySnapshot
+        ? `
+          <div class="current-extremes">
+            <div><span>Max</span><strong>${this._formatTempValue(
+              daySnapshot.summary?.tempMax
+            )}</strong></div>
+            <div><span>Min</span><strong>${this._formatTempValue(
+              daySnapshot.summary?.tempMin
+            )}</strong></div>
+          </div>
+        `
+        : "";
+
+      const highlightsHtml = highlightMetrics
+        .map(
+          (metric) => `
+            <article class="current-highlight">
+              <span class="label">${metric.label}</span>
+              <strong>${metric.value || "--"}</strong>
+              <small>${metric.hint || ""}</small>
+            </article>
+          `
+        )
+        .join("");
+
+      const html = `
+        <div class="weather-current advanced">
+          <div class="location-header">
+            <h2 class="location-name">📍 ${this._escapeHtml(city)}</h2>
+            <div class="location-controls">
+              <button id="favoriteToggle" class="btn-icon favorite-toggle" data-city="${this._escapeHtml(
+                city
+              )}" aria-label="Favorit hinzufügen">☆</button>
+              <span class="location-time" id="current-time"></span>
+            </div>
+          </div>
           <div class="current-main">
             <div class="temperature-section">
-              <span class="current-emoji" id="current-emoji">☀️</span>
-              <span class="current-temp" id="current-temp">--°C</span>
-              <span class="current-description" id="current-desc">--</span>
+              <span class="current-emoji" id="current-emoji">${
+                currentHour.emoji || "❓"
+              }</span>
+              <span class="current-temp" id="current-temp">${this._formatTempValue(
+                currentHour.temperature
+              )}</span>
+              <span class="current-description" id="current-desc">${this._escapeHtml(
+                description
+              )}</span>
+              <small class="current-feels" id="feels-like">Gefühlt ${
+                typeof feelsLike === "number"
+                  ? this._formatTempValue(feelsLike)
+                  : "--"
+              }</small>
+              ${extremes}
             </div>
-
             <div class="weather-details">
               <div class="detail-item">
                 <span class="detail-label">💨 Wind</span>
-                <span class="detail-value" id="wind-speed">-- km/h</span>
+                <span class="detail-value" id="wind-speed">${this._formatWindValue(
+                  currentHour.windSpeed
+                )}${windDirection ? ` · ${windDirection}` : ""}</span>
               </div>
               <div class="detail-item">
                 <span class="detail-label">💧 Luftfeuchtigkeit</span>
-                <span class="detail-value" id="humidity">-- %</span>
+                <span class="detail-value" id="humidity">${this._formatPercentValue(
+                  humidity
+                )}</span>
               </div>
               <div class="detail-item">
-                <span class="detail-label">🌡️ Gefühlt wie</span>
-                <span class="detail-value" id="feels-like">--°C</span>
+                <span class="detail-label">☔ Regen</span>
+                <span class="detail-value">${
+                  typeof currentHour.precipitation === "number"
+                    ? `${currentHour.precipitation.toFixed(1)} mm`
+                    : "--"
+                }</span>
               </div>
             </div>
           </div>
-
-          <div class="source-info" id="source-info">
-            Daten werden geladen...
-          </div>
+          ${sunriseSunset}
+          <div class="current-highlights">${highlightsHtml}</div>
+          <div class="source-info" id="source-info">Daten werden geladen...</div>
         </div>
       `;
 
       this.currentContainer.innerHTML = html;
       this.currentData = weatherData;
+      if (daySnapshot) {
+        this._renderDailyInsightsPanel(daySnapshot);
+      } else if (!Array.isArray(open.dayInsights) || !open.dayInsights.length) {
+        this._renderDailyInsightsPanel(null);
+      }
       this._updateCurrentTime();
 
       if (this.timeIntervalId) {
@@ -67,14 +206,12 @@ class WeatherDisplayComponent {
       }
       this.timeIntervalId = setInterval(() => this._updateCurrentTime(), 1000);
 
-      if (typeof window !== "undefined") {
-        const favBtn = document.getElementById("favoriteToggle");
-        if (favBtn) {
-          favBtn.dataset.city = city;
-        }
-        if (window.syncFavoriteToggleState) {
-          window.syncFavoriteToggleState(city);
-        }
+      const favBtn = document.getElementById("favoriteToggle");
+      if (favBtn) {
+        favBtn.dataset.city = city;
+      }
+      if (typeof window !== "undefined" && window.syncFavoriteToggleState) {
+        window.syncFavoriteToggleState(city);
       }
     } catch (error) {
       console.error("Fehler beim Anzeigen der aktuellen Wetter:", error);
@@ -105,12 +242,32 @@ class WeatherDisplayComponent {
    * @param {string} source - API-Quelle
    */
   displayHourly(hourlyData, source = "") {
-    if (!this.currentContainer) return;
+    const target =
+      document.getElementById("hourly-section") || this.currentContainer;
+    if (!target) return;
 
     try {
+      if (!Array.isArray(hourlyData) || !hourlyData.length) {
+        if (!target.dataset.hourlyInitialized) {
+          target.innerHTML =
+            '<div class="hourly-empty">Keine Stundendaten verfügbar.</div>';
+          target.dataset.hourlyInitialized = "true";
+        }
+        return;
+      }
+
+      if (!target.dataset.hourlyInitialized) {
+        target.innerHTML = "";
+        target.dataset.hourlyInitialized = "true";
+      }
+
       const hourlyHtml = `
-        <div class="hourly-section">
-          <h3>⏰ Stundenvorhersage</h3>
+        <article class="hourly-block" data-hourly-source="${
+          source || "primär"
+        }">
+          <h3>⏰ Stundenvorhersage${
+            source ? ` · ${this._escapeHtml(source)}` : ""
+          }</h3>
           <div class="hourly-scroll">
             ${hourlyData
               .map((hour, idx) => {
@@ -157,11 +314,22 @@ class WeatherDisplayComponent {
               })
               .join("")}
           </div>
-        </div>
+        </article>
       `;
 
-      this.currentContainer.innerHTML += hourlyHtml;
-      this._setupHourlyScroll();
+      const existingBlock = target.querySelector(
+        `[data-hourly-source="${source || "primär"}"]`
+      );
+      if (existingBlock) {
+        existingBlock.outerHTML = hourlyHtml;
+      } else {
+        target.insertAdjacentHTML("beforeend", hourlyHtml);
+      }
+
+      const updatedBlock = target.querySelector(
+        `[data-hourly-source="${source || "primär"}"]`
+      );
+      this._setupHourlyScroll(updatedBlock || target);
     } catch (error) {
       console.error("Fehler beim Anzeigen der Stundendaten:", error);
     }
@@ -177,10 +345,10 @@ class WeatherDisplayComponent {
     try {
       const insights = window.appState?.renderData?.openMeteo?.dayInsights;
       if (Array.isArray(insights) && insights.length) {
+        this._renderDailyInsightsPanel(insights[0]);
         const cards = insights
           .map((day, idx) => this._renderAdvancedForecastCard(day, idx))
           .join("");
-        const hourlyMatrix = this._renderHourlyMatrix(insights);
         this.forecastContainer.innerHTML = `
         <section class="weather-forecast">
           <h2>📅 7-Tage Vorhersage</h2>
@@ -188,10 +356,12 @@ class WeatherDisplayComponent {
             ${cards}
           </div>
         </section>
-        ${hourlyMatrix}
       `;
+        this._bindDayDetailHandlers(insights);
         return;
       }
+
+      this._renderDailyInsightsPanel(null);
 
       const byDay = window.appState?.renderData?.openMeteo?.byDay || null;
       const days = byDay && byDay.length ? byDay : dailyData || [];
@@ -369,11 +539,12 @@ class WeatherDisplayComponent {
       day?.summary?.wind?.directionDeg,
       day?.summary?.wind?.cardinal
     );
+    const hourlyPreview = this._renderInlineHourGrid(day?.hourGrid);
 
     return `
-      <article class="forecast-card advanced" aria-label="Vorhersage für ${
-        day?.label
-      }">
+      <article class="forecast-card advanced" data-day-index="${idx}" tabindex="0" aria-label="Vorhersage für ${
+      day?.label
+    }">
         <header class="forecast-card-header">
           <div>
             <p class="forecast-date">${day?.label || ""}</p>
@@ -409,6 +580,8 @@ class WeatherDisplayComponent {
         <div class="precip-timeline" aria-label="Niederschlag pro Stunde">
           ${precipBars}
         </div>
+        ${hourlyPreview}
+        <button type="button" class="forecast-card-action">Tagesdetails</button>
       </article>
     `;
   }
@@ -483,6 +656,28 @@ class WeatherDisplayComponent {
     `;
   }
 
+  _renderInlineHourGrid(hourGrid = []) {
+    if (!Array.isArray(hourGrid) || !hourGrid.length) {
+      return "";
+    }
+    const cells = hourGrid
+      .slice(0, 24)
+      .map((slot) => {
+        const hourLabel = (slot?.hour ?? 0).toString().padStart(2, "0");
+        const temp =
+          typeof slot?.temperature === "number"
+            ? `${Math.round(slot.temperature)}°`
+            : "–";
+        const classes = ["inline-hour-cell"];
+        if (slot?.isDay === 0) classes.push("is-night");
+        return `<span class="${classes.join(
+          " "
+        )}"><strong>${hourLabel}</strong>${temp}</span>`;
+      })
+      .join("");
+    return `<div class="inline-hour-grid">${cells}</div>`;
+  }
+
   _renderUvChip(value) {
     if (typeof value !== "number" || Number.isNaN(value)) {
       return '<span class="uv-chip uv-unknown">--</span>';
@@ -504,16 +699,22 @@ class WeatherDisplayComponent {
     )} · ${label}</span>`;
   }
 
-  _renderHourlyMatrix(days) {
+  _renderHourlyMatrix(days, options = {}) {
     if (!Array.isArray(days) || !days.length) return "";
+    const title =
+      typeof options.title === "string"
+        ? options.title
+        : "🕒 7×24 Stundenraster";
+    const sectionClasses = ["hourly-matrix"];
+    if (options.compact) sectionClasses.push("is-compact");
     const headerCells = Array.from({ length: 24 }, (_, hour) => {
       const label = hour.toString().padStart(2, "0");
       return `<span class="matrix-cell matrix-header-cell">${label}</span>`;
     }).join("");
     const rows = days.map((day) => this._renderHourlyMatrixRow(day)).join("");
     return `
-      <section class="hourly-matrix">
-        <h3>🕒 7×24 Stundenraster</h3>
+      <section class="${sectionClasses.join(" ")}">
+        ${title ? `<h3>${title}</h3>` : ""}
         <div class="hourly-matrix-grid">
           <div class="hourly-matrix-row matrix-header">
             <div class="matrix-day-label">Tag</div>
@@ -565,6 +766,396 @@ class WeatherDisplayComponent {
     `;
   }
 
+  _renderDailyInsightsPanel(day) {
+    const container = document.getElementById("daily-insights");
+    if (!container) return;
+    if (!day) {
+      container.innerHTML = `
+        <div class="insights-empty">
+          <p>📈 Tagesverlauf steht nach einer Ortssuche bereit.</p>
+        </div>`;
+      return;
+    }
+
+    const hourGrid = Array.isArray(day.hourGrid) ? day.hourGrid : [];
+    const dewSeries = hourGrid.map((slot) =>
+      typeof slot?.dewPoint === "number" ? slot.dewPoint : null
+    );
+    const humiditySeries = hourGrid.map((slot) =>
+      typeof slot?.humidity === "number" ? slot.humidity : null
+    );
+    const windDirectionSeries = hourGrid.map((slot) =>
+      typeof slot?.windDirection === "number" ? slot.windDirection : null
+    );
+    const precipSeries = (day.precipitationTimeline || []).map((slot) =>
+      typeof slot?.amount === "number" ? slot.amount : 0
+    );
+    const precipProbabilities = (day.precipitationTimeline || []).map((slot) =>
+      typeof slot?.probability === "number" ? slot.probability : 0
+    );
+    const uvSeries = (day.uvTimeline || []).map((slot) =>
+      typeof slot?.value === "number" ? slot.value : null
+    );
+    const sunSeries = hourGrid.map((slot) =>
+      typeof slot?.isDay === "number" ? slot.isDay : slot?.isDay ? 1 : 0
+    );
+    const daylightMinutes = day.sun?.daylightMinutes ?? null;
+    const daylightLabel =
+      typeof daylightMinutes === "number"
+        ? `${Math.floor(daylightMinutes / 60)}h ${daylightMinutes % 60}m Licht`
+        : "";
+
+    const peakProbability = precipProbabilities.length
+      ? Math.max(...precipProbabilities)
+      : 0;
+
+    const cards = [
+      this._renderInsightCard({
+        title: "Sonnenpfad",
+        primary: `${this._formatTimeLabel(day.sun?.sunrise) || "–"} · ${
+          this._formatTimeLabel(day.sun?.sunset) || "–"
+        }`,
+        secondary: daylightLabel,
+        sparkline: this._buildSparkline(sunSeries, {
+          min: 0,
+          max: 1,
+          area: true,
+        }),
+        metaStart: "Tag",
+        metaEnd:
+          typeof day.sun?.sunrisePercent === "number"
+            ? `${Math.round(day.sun.sunrisePercent)}%`
+            : "",
+      }),
+      this._renderInsightCard({
+        title: "Taupunkt",
+        primary: this._formatTempValue(day.summary?.dewPointAvg),
+        secondary: "Ø Tagesmittel",
+        sparkline: this._buildSparkline(dewSeries, { area: true }),
+        metaStart: "Max",
+        metaEnd: this._formatTempValue(
+          dewSeries.reduce(
+            (acc, value) =>
+              typeof value === "number" && (acc === null || value > acc)
+                ? value
+                : acc,
+            null
+          )
+        ),
+      }),
+      this._renderInsightCard({
+        title: "Wind",
+        primary: this._formatWindValue(day.summary?.wind?.avgSpeed),
+        secondary: day.summary?.wind?.cardinal || "-",
+        sparkline: this._buildSparkline(windDirectionSeries, {
+          min: 0,
+          max: 360,
+        }),
+        metaStart: "Max",
+        metaEnd: this._formatWindValue(day.summary?.wind?.maxSpeed),
+      }),
+      this._renderInsightCard({
+        title: "Luftfeuchtigkeit",
+        primary: this._formatPercentValue(day.summary?.humidityAvg),
+        sparkline: this._buildSparkline(humiditySeries, { area: true }),
+        metaStart: "Min",
+        metaEnd: this._formatPercentValue(
+          humiditySeries.reduce(
+            (acc, value) =>
+              typeof value === "number" && (acc === null || value < acc)
+                ? value
+                : acc,
+            null
+          )
+        ),
+      }),
+      this._renderInsightCard({
+        title: "Niederschlag",
+        primary:
+          typeof day.summary?.precipitationSum === "number"
+            ? `${day.summary.precipitationSum.toFixed(1)} mm`
+            : "–",
+        sparkline: this._buildSparkline(precipSeries, { area: true }),
+        metaStart: "Wahrsch.",
+        metaEnd: `${Math.round(peakProbability)}%`,
+      }),
+      this._renderInsightCard({
+        title: "UV Index",
+        primary:
+          typeof day.summary?.uvIndexMax === "number"
+            ? day.summary.uvIndexMax.toFixed(1)
+            : "–",
+        sparkline: this._buildSparkline(uvSeries, { area: true }),
+        metaStart: "Mitte",
+        metaEnd: day.summary?.condition || "",
+      }),
+    ].filter(Boolean);
+
+    container.innerHTML = `
+      <div class="section-title">
+        <h3>🔎 Tagesinsights · ${day.label || ""}</h3>
+        <small>${day.summary?.condition || ""}</small>
+      </div>
+      <div class="insights-grid">
+        ${cards.join("")}
+      </div>
+    `;
+  }
+
+  _renderInsightCard({
+    title,
+    primary,
+    secondary,
+    sparkline,
+    metaStart,
+    metaEnd,
+  }) {
+    return `
+      <article class="insight-card">
+        <h4>${title || ""}</h4>
+        <strong>${primary || "–"}</strong>
+        ${secondary ? `<small>${secondary}</small>` : ""}
+        ${sparkline || ""}
+        ${
+          metaStart || metaEnd
+            ? `<div class="insight-meta"><span>${metaStart || ""}</span><span>${
+                metaEnd || ""
+              }</span></div>`
+            : ""
+        }
+      </article>
+    `;
+  }
+
+  _buildSparkline(series = [], options = {}) {
+    const sanitized = series
+      .map((value, index) => ({ value, index }))
+      .filter((entry) => typeof entry.value === "number");
+    if (!sanitized.length) {
+      return '<svg class="sparkline" viewBox="0 0 100 40"></svg>';
+    }
+    const minValue =
+      typeof options.min === "number"
+        ? options.min
+        : Math.min(...sanitized.map((entry) => entry.value));
+    let maxValue =
+      typeof options.max === "number"
+        ? options.max
+        : Math.max(...sanitized.map((entry) => entry.value));
+    if (maxValue === minValue) {
+      maxValue += 1;
+    }
+    const width = 100;
+    const height = 40;
+    const totalSteps = Math.max(series.length - 1, 1);
+    const points = sanitized
+      .map((entry) => {
+        const x = (entry.index / totalSteps) * width;
+        const normalized = (entry.value - minValue) / (maxValue - minValue);
+        const y = height - normalized * height;
+        return `${x.toFixed(2)},${y.toFixed(2)}`;
+      })
+      .join(" ");
+    const areaPath = options.area
+      ? `<polygon points="0,${height} ${points} ${width},${height}" fill="currentColor" opacity="0.2"></polygon>`
+      : "";
+    return `
+      <svg class="sparkline${
+        options.area ? " sparkline--area" : ""
+      }" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+        ${areaPath}
+        <polyline points="${points}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+    `;
+  }
+
+  _bindDayDetailHandlers(days) {
+    if (!this.forecastContainer) return;
+    if (this._forecastDetailHandlers) {
+      this.forecastContainer.removeEventListener(
+        "click",
+        this._forecastDetailHandlers.click
+      );
+      this.forecastContainer.removeEventListener(
+        "keydown",
+        this._forecastDetailHandlers.key
+      );
+      this._forecastDetailHandlers = null;
+    }
+    if (!Array.isArray(days) || !days.length) return;
+
+    const cards = this.forecastContainer.querySelectorAll(
+      ".forecast-card[data-day-index]"
+    );
+    cards.forEach((card, index) => {
+      card.dataset.dayIndex = String(index);
+    });
+
+    const handleOpen = (event) => {
+      const card = event.target.closest(".forecast-card[data-day-index]");
+      if (!card) return;
+      const index = Number(card.dataset.dayIndex);
+      if (Number.isNaN(index)) return;
+      event.preventDefault();
+      this._openDayDetail(days[index]);
+    };
+
+    const handleKey = (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      handleOpen(event);
+    };
+
+    this.forecastContainer.addEventListener("click", handleOpen);
+    this.forecastContainer.addEventListener("keydown", handleKey);
+    this._forecastDetailHandlers = { click: handleOpen, key: handleKey };
+  }
+
+  _openDayDetail(day) {
+    if (!day) return;
+    const modal = document.getElementById("day-detail-modal");
+    if (!modal) return;
+    modal.innerHTML = `
+      <div class="day-detail-panel">
+        <button type="button" class="day-detail-close" aria-label="Tagesdetails schließen">&times;</button>
+        ${this._renderDayDetailBody(day)}
+      </div>
+    `;
+    modal.classList.add("is-visible");
+    const closeBtn = modal.querySelector(".day-detail-close");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", () => this._closeDayDetail());
+      setTimeout(() => closeBtn.focus(), 0);
+    }
+    const dismiss = (event) => {
+      if (event.target === modal) {
+        this._closeDayDetail();
+      }
+    };
+    modal.addEventListener("click", dismiss, { once: true });
+    this._detailEscapeHandler = (event) => {
+      if (event.key === "Escape") {
+        this._closeDayDetail();
+      }
+    };
+    document.addEventListener("keydown", this._detailEscapeHandler);
+  }
+
+  _closeDayDetail() {
+    const modal = document.getElementById("day-detail-modal");
+    if (modal) {
+      modal.classList.remove("is-visible");
+      modal.innerHTML = "";
+    }
+    if (this._detailEscapeHandler) {
+      document.removeEventListener("keydown", this._detailEscapeHandler);
+      this._detailEscapeHandler = null;
+    }
+  }
+
+  _renderDayDetailBody(day) {
+    const stats = [
+      { label: "Max", value: this._formatTempValue(day?.summary?.tempMax) },
+      { label: "Min", value: this._formatTempValue(day?.summary?.tempMin) },
+      {
+        label: "Taupunkt",
+        value: this._formatTempValue(day?.summary?.dewPointAvg),
+      },
+      {
+        label: "Feuchte",
+        value: this._formatPercentValue(day?.summary?.humidityAvg),
+      },
+      {
+        label: "Wind",
+        value: this._formatWindValue(day?.summary?.wind?.avgSpeed),
+      },
+      {
+        label: "UV",
+        value:
+          typeof day?.summary?.uvIndexMax === "number"
+            ? day.summary.uvIndexMax.toFixed(1)
+            : "--",
+      },
+    ];
+
+    const statsHtml = stats
+      .map(
+        (entry) => `
+          <article>
+            <span>${entry.label}</span>
+            <strong>${entry.value}</strong>
+          </article>
+        `
+      )
+      .join("");
+
+    const detailInsights = [
+      this._renderInsightCard({
+        title: "Luftfeuchtigkeit",
+        primary: this._formatPercentValue(day?.summary?.humidityAvg),
+        sparkline: this._buildSparkline(
+          (day.hourGrid || []).map((slot) => slot?.humidity ?? null),
+          { area: true }
+        ),
+      }),
+      this._renderInsightCard({
+        title: "Niederschlag",
+        primary:
+          typeof day.summary?.precipitationSum === "number"
+            ? `${day.summary.precipitationSum.toFixed(1)} mm`
+            : "--",
+        sparkline: this._buildSparkline(
+          (day.precipitationTimeline || []).map((slot) => slot?.amount ?? 0),
+          { area: true }
+        ),
+      }),
+      this._renderInsightCard({
+        title: "Wind",
+        primary: `${this._formatWindValue(day?.summary?.wind?.avgSpeed)} · ${
+          day?.summary?.wind?.cardinal || "-"
+        }`,
+        sparkline: this._buildSparkline(
+          (day.hourGrid || []).map((slot) => slot?.windDirection ?? null),
+          { min: 0, max: 360 }
+        ),
+      }),
+      this._renderInsightCard({
+        title: "UV Index",
+        primary:
+          typeof day.summary?.uvIndexMax === "number"
+            ? day.summary.uvIndexMax.toFixed(1)
+            : "--",
+        sparkline: this._buildSparkline(
+          (day.uvTimeline || []).map((slot) => slot?.value ?? null),
+          { area: true }
+        ),
+      }),
+    ].join("");
+
+    const matrix = this._renderHourlyMatrix([day], {
+      title: "",
+      compact: true,
+    });
+
+    return `
+      <header class="day-detail-header">
+        <p class="forecast-date">${day?.label || ""}</p>
+        <h3>${day?.summary?.condition || "Tagesdetails"}</h3>
+        ${
+          day?.sun
+            ? `<small>🌅 ${
+                this._formatTimeLabel(day.sun.sunrise) || "–"
+              } · 🌇 ${this._formatTimeLabel(day.sun.sunset) || "–"}</small>`
+            : ""
+        }
+      </header>
+      <div class="day-detail-body">
+        <div class="day-detail-stats">${statsHtml}</div>
+        <div class="insights-grid">${detailInsights}</div>
+        ${matrix}
+      </div>
+    `;
+  }
+
   _formatTempValue(value) {
     if (typeof value !== "number" || Number.isNaN(value)) return "--";
     const unit = window.appState?.units?.temperature || "C";
@@ -582,6 +1173,11 @@ class WeatherDisplayComponent {
   _formatPercentValue(value) {
     if (typeof value !== "number" || Number.isNaN(value)) return "--";
     return `${Math.round(value)}%`;
+  }
+
+  _formatMetricValue(value, suffix = "", digits = 1) {
+    if (typeof value !== "number" || Number.isNaN(value)) return "--";
+    return `${value.toFixed(digits)}${suffix}`;
   }
 
   _formatTimeLabel(iso) {
@@ -794,9 +1390,9 @@ class WeatherDisplayComponent {
    * Setup Horizontales Scrolling für Stundendaten
    * @private
    */
-  _setupHourlyScroll() {
-    const scrollContainer =
-      this.currentContainer?.querySelector(".hourly-scroll");
+  _setupHourlyScroll(scope) {
+    const root = scope || this.currentContainer;
+    const scrollContainer = root?.querySelector(".hourly-scroll");
     if (!scrollContainer) return;
 
     let isDown = false;
