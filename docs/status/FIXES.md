@@ -180,9 +180,10 @@
 
 **Lösungen:**
 
-- `src/app.js`: Hinterlegt den von euch bereitgestellten Key (`9f79d40dc85bebc834364783854eefbd`) als Default, lässt aber weiterhin Runtime-Overrides zu.
+- `src/app.js`: Entfernt harte Demo-Keys und akzeptiert stattdessen nur noch Runtime- oder Benutzer-Keys, wodurch deaktivierte Accounts keine Fehlversuche mehr erzeugen.
+- `src/utils/apiKeyManager.js`: Entfernt bekannte, abgelaufene Demo-Keys automatisch aus localStorage und hält neue Keys selbst dann bereit, wenn localStorage blockiert ist.
 - `src/features.js`: Map-Overlays werden automatisch aktiviert (RainViewer zuerst) und melden Tile-Fehler sofort im UI + API-Status, damit ungültige Keys sichtbar werden.
-- `README.md`: Dokumentiert, dass ein gültiger Key eingebettet ist und wie er überschrieben werden kann.
+- `README.md`: Dokumentiert, wie eigene Keys hinterlegt oder via `window.__APP_DEFAULT_API_KEYS` injiziert werden können.
 
 **Resultat:** Regenradar lädt sofort, OWM-Layer erscheinen reproduzierbar und invalid Keys werden klar gekennzeichnet.
 
@@ -208,10 +209,7 @@
 
 **Lösungen:**
 
-- `src/utils/constants.js`: Neues Basis-Endpoint `https://api.phaseofthemoontoday.com/v1` inkl. großzügigerem Timeout hinterlegt.
-- `src/api/moonPhase.js`: Client komplett neu geschrieben – sluggt die aktuelle Stadt, fragt zunächst den Location-Endpoint an und fällt bei Bedarf auf `/date/{YYYY-MM-DD}` bzw. `/current` zurück. Die Normalisierung extrahiert Phase, Emoji, Illuminationsgrad sowie Moonrise/Moonset aus den neuen Feldnamen.
-- `src/app.js`: Übermittelt aktuelle Koordinaten + BigDataCloud-Ortsdetails an den Client, damit lokale Mondauf/-untergangszeiten korrekt gezogen werden.
-- `README.md`: PhaseOfTheMoonToday im Abschnitt "Kostenlose APIs" dokumentiert.
+- `src/api/moonPhase.js`: Client komplett neu geschrieben – sluggt die aktuelle Stadt, fragt zunächst den Location-Endpoint an und fällt bei Bedarf auf `/date/{YYYY-MM-DD}` bzw. `/current` zurück. Die Normalisierung extrahiert Phase, Emoji, Illuminationsgrad sowie Moonrise/Moonset aus den neuen Feldnamen. Fällt der Provider komplett aus, greift jetzt eine lokale astronomische Berechnung als Fallback.
 
 **Resultat:** Die Astronomie-Karten bekommen wieder zuverlässige Mondphasen inkl. Moonrise/Moonset, ganz ohne zusätzliche Keys.
 

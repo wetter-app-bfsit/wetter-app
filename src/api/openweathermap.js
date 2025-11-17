@@ -11,7 +11,7 @@
 
 class OpenWeatherMapAPI {
   constructor() {
-    this.baseUrl = "https://api.openweathermap.org/data/2.5/onecall";
+    this.baseUrl = "https://api.openweathermap.org/data/3.0/onecall";
     this.timeout = 5000;
     this.name = "OpenWeatherMap";
   }
@@ -82,7 +82,9 @@ class OpenWeatherMapAPI {
 
           // Don't retry on client errors (401, 403, 404, 429)
           const isClientError =
-            /HTTP Fehler 4\d\d|401|403|404|429|API key|Invalid API/.test(msg);
+            /HTTP Fehler 4\d\d|401|403|404|429|API key|Invalid API|403 Forbidden/.test(
+              msg
+            );
           if (isClientError || isLast) {
             throw err;
           }

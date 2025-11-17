@@ -26,9 +26,9 @@ console.log(window.apiKeyManager.exportKeys());
 
 ```javascript
 {
-  openweathermap: "9f79d40dc85bebc834364783854eefbd",
-  visualcrossing: "JVCZ3WAHB5XBT7GXQC7RQBGBE",
-  meteostat: "edda72c60bmsh4a38c4687147239p14e8d5jsn6f578346b68a"
+  openweathermap: "<dein-owm-key>",
+  visualcrossing: "<optional>",
+  meteostat: "<optional>"
 }
 ```
 
@@ -146,7 +146,7 @@ console.log("VisualCrossing:", window.apiKeyManager.hasKey("visualcrossing"));
 ```javascript
 // OpenWeatherMap Test:
 fetch(
-  "https://api.openweathermap.org/data/2.5/onecall?lat=52.52&lon=13.405&appid=9f79d40dc85bebc834364783854eefbd"
+  "https://api.openweathermap.org/data/3.0/onecall?lat=52.52&lon=13.405&appid=<dein-owm-key>"
 )
   .then((r) => r.json())
   .then((d) => console.log("OWM Test:", d));

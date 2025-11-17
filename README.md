@@ -101,7 +101,7 @@ Dokumentation: https://docs/api-documentation.md
 | **Meteostat**      | Historische Stationsdaten             | https://meteostat.net/                     | ✓                |
 | **VisualCrossing** | Historische & Alternative Vorhersagen | https://www.visualcrossing.com/weather-api | ✓ (Trial)        |
 
-> ℹ️ Ein gültiger OpenWeatherMap-Key ist bereits vorinstalliert. Du kannst ihn im Einstellungsdialog jederzeit durch deinen eigenen ersetzen – hinterlegte Keys in localStorage haben immer Vorrang.
+> ℹ️ Ab sofort werden **keine Demo-Keys mehr mitgeliefert**. Hinterlege deinen persönlichen Key direkt im Einstellungsdialog oder injiziere ihn zur Laufzeit über `window.__APP_DEFAULT_API_KEYS` (siehe unten). Bereits gespeicherte Keys in localStorage haben weiterhin Vorrang.
 
 #### Keys Konfigurieren
 
@@ -115,7 +115,7 @@ Dokumentation: https://docs/api-documentation.md
 
 2. **In der App** (Frontend):
    - **Einstellungen** → **API-Keys**
-   - Keys eingeben (werden lokal in localStorage gespeichert)
+   - Keys eingeben (werden – falls möglich – lokal gespeichert; andernfalls für die aktuelle Session gehalten)
 
 > ℹ️ **OpenWeatherMap liefert keinen Demo-Key mehr mit**. Trage deinen persönlichen Key im Einstellungsdialog ein, damit optionale Vorhersagen und Karten-Overlays funktionieren.
 

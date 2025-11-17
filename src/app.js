@@ -1625,11 +1625,7 @@ function initApp() {
       ? window.__APP_DEFAULT_API_KEYS
       : {};
 
-  const bakedInDefaults = {
-    openweathermap: "9f79d40dc85bebc834364783854eefbd",
-    visualcrossing: "JVCZ3WAHB5XBT7GXQC7RQBGBE",
-    meteostat: "edda72c60bmsh4a38c4687147239p14e8d5jsn6f578346b68a",
-  };
+  const bakedInDefaults = {};
 
   window.apiKeyManager.setDefaults({
     ...bakedInDefaults,
@@ -1673,17 +1669,15 @@ function initApp() {
     loadWeather(e.detail.city);
   });
 
-  document
-    .getElementById("darkModeToggle")
-    ?.addEventListener("change", (e) => {
-      appState.isDarkMode = e.target.checked;
-      document.body.classList.toggle("dark-mode", appState.isDarkMode);
-      try {
-        localStorage.setItem("theme", appState.isDarkMode ? "dark" : "light");
-      } catch (e) {
-        console.warn("localStorage fehler:", e);
-      }
-    });
+  document.getElementById("darkModeToggle")?.addEventListener("change", (e) => {
+    appState.isDarkMode = e.target.checked;
+    document.body.classList.toggle("dark-mode", appState.isDarkMode);
+    try {
+      localStorage.setItem("theme", appState.isDarkMode ? "dark" : "light");
+    } catch (e) {
+      console.warn("localStorage fehler:", e);
+    }
+  });
 
   // Dark Mode initial state
   const darkModeToggle = document.getElementById("darkModeToggle");
@@ -1737,18 +1731,22 @@ function initApp() {
       async (position) => {
         const { latitude, longitude } = position.coords;
         console.log(`📍 Standort gefunden: ${latitude}, ${longitude}`);
-        
+
         try {
           // Reverse Geocoding - finde Stadtnamen
           const response = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
           );
           const data = await response.json();
-          const cityName = data.address?.city || data.address?.town || data.address?.county || "Standort";
-          
+          const cityName =
+            data.address?.city ||
+            data.address?.town ||
+            data.address?.county ||
+            "Standort";
+
           // Füge Stadt in Suchfeld ein
           document.getElementById("cityInput").value = cityName;
-          
+
           // Lade Wetter automatisch
           await loadWeather(cityName);
           console.log(`✅ Wetter für ${cityName} automatisch geladen`);

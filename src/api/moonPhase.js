@@ -37,6 +37,15 @@ class MoonPhaseAPI {
       lastError?.message ||
       "MoonPhase API lieferte keine Daten von PhaseOfTheMoonToday";
     console.warn("MoonPhaseToday", message);
+    const fallback = this._computeLocalPhase(date, context);
+    if (fallback) {
+      return {
+        data: fallback,
+        duration: Date.now() - start,
+        source: "moonphase-local",
+        statusMessage: "Berechnet lokal",
+      };
+    }
     return {
       error: message,
       source: "moonphase",
@@ -217,6 +226,68 @@ class MoonPhaseAPI {
     if (!phase) return null;
     if (typeof illumination !== "number") return phase;
     return `${phase} (${illumination.toFixed(1)}% beleuchtet)`;
+  }
+
+  _computeLocalPhase(date, context = {}) {
+    try {
+      const target = new Date(date);
+      if (Number.isNaN(target.getTime())) return null;
+      const synodicMonth = 29.530588853; // Tage
+      const knownNewMoon = Date.UTC(2000, 0, 6, 18, 14); // Referenz aus Meeus
+      const daysSinceNew = (target.getTime() - knownNewMoon) / 86400000;
+      const cycle = this._normalizeCycle(daysSinceNew / synodicMonth);
+      const age = cycle * synodicMonth;
+      const illumination = ((1 - Math.cos(cycle * 2 * Math.PI)) / 2) * 100; // Prozent
+      const phaseInfo = this._phaseFromCycle(cycle);
+      const locationLabel =
+        context?.city ||
+        context?.locationDetails?.city ||
+        context?.locationDetails?.locality ||
+        null;
+
+      return {
+        phase: phaseInfo.name,
+        illumination,
+        description: `${phaseInfo.name} (${illumination.toFixed(
+          1
+        )}% beleuchtet)`,
+        zodiac: null,
+        moonrise: null,
+        moonset: null,
+        emoji: phaseInfo.emoji,
+        daysSinceNew: age,
+        nextFullMoon: null,
+        nextNewMoon: null,
+        source: locationLabel ? `computed:${locationLabel}` : "computed",
+      };
+    } catch (error) {
+      console.warn("MoonPhase Local fallback fehlgeschlagen", error);
+      return null;
+    }
+  }
+
+  _normalizeCycle(value) {
+    const normalized = value - Math.floor(value);
+    return normalized < 0 ? normalized + 1 : normalized;
+  }
+
+  _phaseFromCycle(cycle) {
+    const phases = [
+      "New Moon",
+      "Waxing Crescent",
+      "First Quarter",
+      "Waxing Gibbous",
+      "Full Moon",
+      "Waning Gibbous",
+      "Last Quarter",
+      "Waning Crescent",
+    ];
+    const index = Math.floor(cycle * 8 + 0.5) % phases.length;
+    const name = phases[index];
+    return {
+      name,
+      emoji: this._phaseEmoji(name) || this._phaseEmoji(name.toLowerCase()),
+    };
   }
 }
 

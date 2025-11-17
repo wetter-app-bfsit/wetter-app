@@ -10,22 +10,22 @@ Alle 3 API-Keys wurden vollständig in Calchas integriert.
 
 ### 1. **OpenWeatherMap** ✅
 
-- **API-Key:** `9f79d40dc85bebc834364783854eefbd`
-- **Status:** Automatisch beim ersten Start gespeichert
+- **API-Key:** Individuell (kein Demo-Key mehr enthalten)
+- **Status:** Bitte im Einstellungsdialog speichern oder via `window.__APP_DEFAULT_API_KEYS` injizieren
 - **Features:** Current Weather, Hourly Forecast, Daily Forecast
 - **Integration:** Wird als optionale Zusatzquelle geladen wenn Hauptquellen (Open-Meteo, BrightSky) vorhanden
 
 ### 2. **VisualCrossing** ✅
 
-- **API-Key:** `JVCZ3WAHB5XBT7GXQC7RQBGBE`
-- **Status:** Automatisch beim ersten Start gespeichert
+- **API-Key:** Individuell (kein Demo-Key mehr enthalten)
+- **Status:** Bitte im Einstellungsdialog speichern oder via Runtime-Defaults injizieren
 - **Features:** Current Weather, Historical Data, Forecast
 - **Integration:** Wird als optionale Zusatzquelle geladen
 
 ### 3. **Meteostat** ✅
 
-- **API-Key (RapidAPI):** `edda72c60bmsh4a38c4687147239p14e8d5jsn6f578346b68a`
-- **Status:** Automatisch beim ersten Start gespeichert
+- **API-Key (RapidAPI):** Individuell (kein Demo-Key mehr enthalten)
+- **Status:** Bitte im Einstellungsdialog speichern oder via Runtime-Defaults injizieren
 - **Features:** Historical Weather Data
 - **Integration:** Verfügbar für historische Abfragen
 
@@ -85,11 +85,7 @@ class APIKeyManager {
 ```javascript
 // In initApp()
 window.apiKeyManager = new APIKeyManager();
-window.apiKeyManager.setDefaults({
-  openweathermap: "9f79d40dc85bebc834364783854eefbd",
-  visualcrossing: "JVCZ3WAHB5XBT7GXQC7RQBGBE",
-  meteostat: "edda72c60bmsh4a38c4687147239p14e8d5jsn6f578346b68a",
-});
+window.apiKeyManager.setDefaults(window.__APP_DEFAULT_API_KEYS || {});
 ```
 
 ### Integration in fetchWeatherData()
