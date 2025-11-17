@@ -171,19 +171,20 @@ class OpenWeatherMapAPI {
   _shouldFallbackToLegacy(version, error) {
     if (version !== "3.0") return false;
     const message = (error?.message || "").toLowerCase();
-    if (!message.includes("401")) return false;
-    const subscriptionHints = [
-      "subscription",
-      "subscribe",
-      "plan",
-      "paid",
-      "billing",
-      "credit",
-      "one call 3",
-      "onecall 3",
-      "3.0",
-    ];
-    return subscriptionHints.some((hint) => message.includes(hint));
+    if (!message) return false;
+
+    const httpStatusMatch = /401|403/.test(message);
+    const invalidKeyHint =
+      message.includes("invalid api key") || message.includes("appid");
+    const blockedHint = message.includes("blocked");
+    const subscriptionHint =
+      message.includes("subscription") ||
+      message.includes("plan") ||
+      message.includes("one call 3") ||
+      message.includes("onecall 3") ||
+      message.includes("3.0");
+
+    return httpStatusMatch || invalidKeyHint || blockedHint || subscriptionHint;
   }
 
   /**
