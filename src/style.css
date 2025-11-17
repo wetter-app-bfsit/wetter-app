@@ -1963,7 +1963,7 @@ body.dark-mode .dark-mode-label {
 }
 
 .dark-mode-switch input:checked + .dark-mode-slider {
-  background: #007BFF;
+  background: #007bff;
   box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
 }
 
@@ -3651,6 +3651,183 @@ body.dark-mode .modal-header {
   gap: var(--spacing-sm);
 }
 
+.map-radar-controls {
+  background: rgba(15, 23, 42, 0.03);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.map-radar-primary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.map-radar-mode {
+  display: inline-flex;
+  background: rgba(15, 23, 42, 0.06);
+  border-radius: 999px;
+  padding: 4px;
+}
+
+.map-radar-mode-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-heading);
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.map-radar-mode-btn.is-active {
+  background: white;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.18);
+}
+
+.map-radar-playback {
+  display: inline-flex;
+  gap: 0.4rem;
+}
+
+.map-radar-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.map-radar-btn:hover {
+  transform: translateY(-1px);
+}
+
+.map-radar-btn.is-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.map-radar-timeline {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 220px;
+}
+
+.map-radar-timeline-label {
+  min-width: 70px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.map-radar-timeline-track {
+  position: relative;
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.map-radar-timeline-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, #38bdf8, #0ea5e9);
+  width: 0;
+  border-radius: inherit;
+}
+
+.map-radar-timeline-thumb {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #0ea5e9;
+  border: 2px solid white;
+  box-shadow: 0 6px 18px rgba(6, 182, 212, 0.35);
+  transition: left 0.15s ease;
+}
+
+.map-radar-empty {
+  padding: 0.9rem 1rem;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.05);
+  border: 1px dashed rgba(15, 23, 42, 0.12);
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.map-radar-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.map-radar-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+body.dark-mode .map-radar-controls {
+  background: rgba(15, 23, 42, 0.35);
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+body.dark-mode .map-radar-mode {
+  background: rgba(15, 23, 42, 0.55);
+}
+
+body.dark-mode .map-radar-mode-btn {
+  color: #f8fafc;
+}
+
+body.dark-mode .map-radar-mode-btn.is-active {
+  background: rgba(15, 23, 42, 0.85);
+  color: #38bdf8;
+}
+
+body.dark-mode .map-radar-btn {
+  background: rgba(15, 23, 42, 0.65);
+  border-color: rgba(148, 163, 184, 0.35);
+  color: #f8fafc;
+}
+
+body.dark-mode .map-radar-timeline-track {
+  background: rgba(148, 163, 184, 0.25);
+}
+
+body.dark-mode .map-radar-empty {
+  background: rgba(15, 23, 42, 0.45);
+  border-color: rgba(148, 163, 184, 0.35);
+  color: rgba(226, 232, 240, 0.85);
+}
+
+body.dark-mode .map-radar-meta,
+body.dark-mode .map-radar-hint {
+  color: rgba(226, 232, 240, 0.8);
+}
+
 .map-layer-btn {
   background: rgba(15, 23, 42, 0.04);
   border: 1px solid rgba(15, 23, 42, 0.12);
@@ -3673,6 +3850,11 @@ body.dark-mode .modal-header {
   opacity: 0.4;
   cursor: not-allowed;
   pointer-events: none;
+}
+
+#weather-map,
+.weather-map-container {
+  position: relative;
 }
 
 .map-inspector {
@@ -3758,6 +3940,65 @@ body.dark-mode .map-overlay-legend-item {
 .map-overlay-badge[data-state="active"] {
   background: rgba(16, 185, 129, 0.2);
   color: #047857;
+}
+
+.map-hover-tooltip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(-9999px, -9999px);
+  background: rgba(15, 23, 42, 0.85);
+  color: #f8fafc;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.45);
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+  min-width: 190px;
+  z-index: 500;
+  transition: opacity 0.12s ease;
+}
+
+.map-hover-tooltip.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.map-hover-tooltip.is-loading {
+  opacity: 0.8;
+}
+
+.map-hover-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.map-hover-row + .map-hover-row {
+  margin-top: 0.35rem;
+}
+
+.map-hover-row.secondary {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.map-hover-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  margin-bottom: 0.1rem;
+}
+
+.map-hover-temp {
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.map-hover-loading {
+  font-size: 0.9rem;
+  letter-spacing: 0.03em;
 }
 
 .map-overlay-badge[data-state="loading"] {

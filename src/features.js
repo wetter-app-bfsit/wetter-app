@@ -1,7 +1,46 @@
+/* global L, Chart */
+
 /**
  * features.js - Additional UI modules used by app.js
  * Weather map, alert aggregation, historical charts and local analytics.
  */
+
+/**
+ * @typedef {Window & {
+ *   apiKeyManager?: {
+ *     hasKey(key: string): boolean;
+ *     getKey(key: string): string | null | undefined;
+ *   };
+ *   updateApiStatusEntry?: (
+ *     service: string,
+ *     status: { state: string; message: string; detail?: string }
+ *   ) => void;
+ *   L?: any;
+ *   Chart?: any;
+ * }} AugmentedWindow
+ */
+
+/**
+ * @returns {AugmentedWindow | undefined}
+ */
+function getAugmentedWindow() {
+  if (typeof window === "undefined") return undefined;
+  return /** @type {AugmentedWindow} */ (window);
+}
+
+/**
+ * @returns {any}
+ */
+function getLeafletInstance() {
+  return getAugmentedWindow()?.L;
+}
+
+/**
+ * @returns {any}
+ */
+function getChartInstance() {
+  return getAugmentedWindow()?.Chart;
+}
 
 // ============================================
 // 1. LEAFLET MAP / OVERLAYS
@@ -10,6 +49,7 @@
 class WeatherMap {
   constructor(containerId) {
     this.containerId = containerId;
+    this.leaflet = getLeafletInstance();
     this.map = null;
     this.marker = null;
     this.baseLayer = null;
@@ -25,6 +65,15 @@ class WeatherMap {
     this.rainViewerTileUrl = null;
     this.rainViewerFetchedAt = 0;
     this.rainViewerPromise = null;
+    this.rainViewerFrames = { past: [], nowcast: [] };
+    this.rainViewerFrameIndex = 0;
+    this.rainViewerMode = "nowcast";
+    this.radarControlsEl = null;
+    this.rainViewerLoading = false;
+    this.rainViewerPlaybackHandle = null;
+    this.rainViewerIsPlaying = false;
+    this._radarControlHandler = null;
+    this._radarTimelineHandler = null;
     this.overlayEventsBound = false;
     this.overlayLayerByKey = new Map();
     this.toolbarEl = null;
@@ -45,7 +94,7 @@ class WeatherMap {
       return;
     }
 
-    if (typeof L === "undefined") {
+    if (!this.leaflet) {
       container.innerHTML =
         '<div class="map-unavailable">Leaflet nicht geladen - Karte deaktiviert</div>';
       return;
@@ -58,6 +107,7 @@ class WeatherMap {
       this._createMap(lat, lon);
       this._ensureOverlayStatus();
       this._injectOverlayNotice(container);
+      this._ensureRadarControlsTarget();
       this._bindViewportListeners();
     }
 
@@ -67,18 +117,19 @@ class WeatherMap {
   }
 
   _createMap(lat, lon) {
-    this.map = L.map(this.containerId, {
-      preferCanvas: true,
-      zoomControl: true,
-    }).setView([lat, lon], 10);
+    this.map = this.leaflet
+      .map(this.containerId, {
+        preferCanvas: true,
+        zoomControl: true,
+      })
+      .setView([lat, lon], 10);
 
-    this.baseLayer = L.tileLayer(
-      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-      {
+    this.baseLayer = this.leaflet
+      .tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "OpenStreetMap contributors",
         maxZoom: 18,
-      }
-    ).addTo(this.map);
+      })
+      .addTo(this.map);
 
     this.refreshOverlays();
     if (this.inspector && typeof this.inspector.bindToMap === "function") {
@@ -94,7 +145,7 @@ class WeatherMap {
       this.marker.setLatLng([lat, lon]);
       this.marker.setPopupContent(`<strong>${city || "Standort"}</strong>`);
     } else {
-      this.marker = L.marker([lat, lon]).addTo(this.map);
+      this.marker = this.leaflet.marker([lat, lon]).addTo(this.map);
       this.marker.bindPopup(`<strong>${city || "Standort"}</strong>`);
     }
   }
@@ -242,11 +293,11 @@ class WeatherMap {
     const overlays = {};
     const locked = [];
     let pendingRainViewer = false;
-    const hasKeyManager = typeof window !== "undefined" && window.apiKeyManager;
-    const owmKey =
-      hasKeyManager && window.apiKeyManager.hasKey("openweathermap")
-        ? window.apiKeyManager.getKey("openweathermap")
-        : null;
+    const browserWindow = getAugmentedWindow();
+    const hasKeyManager = Boolean(browserWindow?.apiKeyManager);
+    const owmKey = browserWindow?.apiKeyManager?.hasKey("openweathermap")
+      ? browserWindow.apiKeyManager.getKey("openweathermap")
+      : null;
 
     this.overlayLookup.clear();
     this.overlayLayerByKey.clear();
@@ -259,8 +310,9 @@ class WeatherMap {
       let shouldSkipLayer = false;
 
       if (config.key === "radar") {
-        if (this.rainViewerTileUrl) {
-          url = this.rainViewerTileUrl;
+        const rainUrl = this._getActiveRainViewerTileUrl();
+        if (rainUrl) {
+          url = rainUrl;
         } else {
           pendingRainViewer = true;
           state = "loading";
@@ -291,11 +343,24 @@ class WeatherMap {
         return;
       }
 
-      const layer = L.tileLayer(url, {
+      const layerOptions = {
         attribution: config.attribution || config.provider,
-        opacity: 0.65,
-        maxZoom: 18,
-      });
+        opacity: config.key === "radar" ? 0.85 : 0.65,
+        maxZoom: config.key === "radar" ? 12 : 18,
+      };
+
+      if (config.key === "radar") {
+        Object.assign(layerOptions, {
+          tileSize: 512,
+          zoomOffset: -1,
+          detectRetina: true,
+          updateWhenIdle: true,
+          updateInterval: 150,
+          className: "rainviewer-tiles",
+        });
+      }
+
+      const layer = this.leaflet.tileLayer(url, layerOptions);
 
       layer.on("tileerror", () => this._handleTileError(config));
 
@@ -313,7 +378,7 @@ class WeatherMap {
     const hasOverlays = Object.keys(overlays).length > 0;
 
     if (hasOverlays) {
-      this.layerControl = L.control.layers(
+      this.layerControl = this.leaflet.control.layers(
         { "Standard (OSM)": this.baseLayer },
         overlays,
         { collapsed: false }
@@ -374,9 +439,6 @@ class WeatherMap {
         }
       });
     }
-
-    this._renderOverlayLegend();
-    this._syncToolbarAvailability();
   }
 
   bindToolbar(toolbarSelector) {
@@ -502,16 +564,19 @@ class WeatherMap {
   }
 
   _ensureRainViewerTiles() {
-    const isFresh =
-      this.rainViewerTileUrl &&
+    const stillFresh =
+      this._getActiveRainViewerTileUrl() &&
       Date.now() - this.rainViewerFetchedAt < 5 * 60 * 1000;
-    if (isFresh) {
+    if (stillFresh) {
       return Promise.resolve(true);
     }
 
     if (this.rainViewerPromise) {
       return this.rainViewerPromise;
     }
+
+    this.rainViewerLoading = true;
+    this._renderRadarControls();
 
     const endpoint = "https://tilecache.rainviewer.com/api/maps.json";
     this.rainViewerPromise = fetch(endpoint)
@@ -522,26 +587,18 @@ class WeatherMap {
         return response.json();
       })
       .then((data) => {
-        const pastFrames = Array.isArray(data?.radar?.past)
-          ? data.radar.past
-          : [];
-        const nowcastFrames = Array.isArray(data?.radar?.nowcast)
-          ? data.radar.nowcast
-          : [];
-        const latestPast = pastFrames[pastFrames.length - 1];
-        const fallbackFuture =
-          nowcastFrames[0] || nowcastFrames[nowcastFrames.length - 1];
-        const frame = latestPast || fallbackFuture;
-        if (!frame?.path) {
-          throw new Error("Kein Radar-Frame verfügbar");
-        }
-        this.rainViewerTileUrl = `https://tilecache.rainviewer.com/v2/radar/${frame.path}/512/{z}/{x}/{y}/2/1_1.png`;
-        this.rainViewerFetchedAt = Date.now();
+        this._ingestRainViewerPayload(data);
+        this.rainViewerLoading = false;
+        this._renderRadarControls();
         return true;
       })
       .catch((err) => {
         console.warn("RainViewer Frames nicht verfügbar", err);
         this.rainViewerTileUrl = null;
+        this.rainViewerFrames = { past: [], nowcast: [] };
+        this.rainViewerLoading = false;
+        this._stopRainViewerPlayback({ silent: true });
+        this._renderRadarControls();
         return false;
       })
       .finally(() => {
@@ -559,6 +616,7 @@ class WeatherMap {
     }
     this._updateOverlayStatus();
     this._renderOverlayLegend();
+    this._renderRadarControls();
   }
 
   _handleOverlayRemove(layer) {
@@ -570,6 +628,7 @@ class WeatherMap {
     }
     this._updateOverlayStatus();
     this._renderOverlayLegend();
+    this._renderRadarControls();
   }
 
   _ensureOverlayStatus() {
@@ -590,6 +649,344 @@ class WeatherMap {
     notice.className = "map-overlay-notice";
     container.appendChild(notice);
     this.noticeEl = notice;
+  }
+
+  _ensureRadarControlsTarget() {
+    if (this.radarControlsEl) return;
+    const target = document.getElementById("map-radar-controls");
+    if (!target) return;
+    this.radarControlsEl = target;
+    this._renderRadarControls();
+    this._bindRadarControlEvents();
+  }
+
+  _bindRadarControlEvents() {
+    if (!this.radarControlsEl || this._radarControlHandler) return;
+    this._radarControlHandler = (event) => this._handleRadarControlClick(event);
+    this._radarTimelineHandler = (event) =>
+      this._handleRadarTimelinePointer(event);
+    this.radarControlsEl.addEventListener("click", this._radarControlHandler);
+    this.radarControlsEl.addEventListener(
+      "pointerdown",
+      this._radarTimelineHandler
+    );
+  }
+
+  _renderRadarControls() {
+    if (!this.radarControlsEl) return;
+
+    if (this.rainViewerLoading) {
+      this.radarControlsEl.innerHTML =
+        '<div class="map-radar-empty">RainViewer wird geladen…</div>';
+      return;
+    }
+
+    const pastFrames = this.rainViewerFrames?.past || [];
+    const nowcastFrames = this.rainViewerFrames?.nowcast || [];
+    let activeFrames = this._getActiveRainViewerFrames();
+    if (!activeFrames.length) {
+      if (pastFrames.length && this.rainViewerMode !== "past") {
+        this.rainViewerMode = "past";
+        activeFrames = this._getActiveRainViewerFrames();
+      } else if (nowcastFrames.length && this.rainViewerMode !== "nowcast") {
+        this.rainViewerMode = "nowcast";
+        activeFrames = this._getActiveRainViewerFrames();
+      }
+    }
+
+    if (!activeFrames.length) {
+      this._stopRainViewerPlayback({ silent: true });
+      this.radarControlsEl.innerHTML =
+        '<div class="map-radar-empty">Keine Radar-Daten verfügbar.</div>';
+      return;
+    }
+
+    this.rainViewerFrameIndex = Math.min(
+      Math.max(this.rainViewerFrameIndex, 0),
+      activeFrames.length - 1
+    );
+
+    const activeFrame = this._getActiveRainViewerFrame();
+    const label = this._formatRadarFrameLabel(activeFrame);
+    const context = this._formatRadarFrameContext(activeFrame);
+    const progress =
+      activeFrames.length > 1
+        ? (this.rainViewerFrameIndex / (activeFrames.length - 1)) * 100
+        : 0;
+    const overlayActive = this.currentOverlay?.key === "radar";
+    const playing = this.rainViewerIsPlaying;
+    const disableClass = activeFrames.length ? "" : "is-disabled";
+    const disableAttr = activeFrames.length ? "" : "disabled";
+
+    const modeButton = (mode, text, available) => {
+      const classes = [
+        "map-radar-mode-btn",
+        this.rainViewerMode === mode ? "is-active" : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      const disabled = available ? "" : "disabled";
+      return `<button type="button" class="${classes}" data-radar-mode="${mode}" ${disabled}>${text}</button>`;
+    };
+
+    this.radarControlsEl.innerHTML = `
+      <div class="map-radar-primary">
+        <div class="map-radar-mode" role="group" aria-label="Radar-Zeitraum">
+          ${modeButton("past", "Rückblick", pastFrames.length)}
+          ${modeButton("nowcast", "Vorhersage", nowcastFrames.length)}
+        </div>
+        <div class="map-radar-playback" role="group" aria-label="Radar-Steuerung">
+          <button type="button" class="map-radar-btn ${disableClass}" ${disableAttr}
+            data-radar-action="prev" aria-label="Vorheriger Frame">⏮</button>
+          <button type="button" class="map-radar-btn ${disableClass}" ${disableAttr}
+            data-radar-action="play" aria-label="Animation starten" ${
+              playing ? "hidden" : ""
+            }>▶</button>
+          <button type="button" class="map-radar-btn ${disableClass}" ${disableAttr}
+            data-radar-action="pause" aria-label="Animation stoppen" ${
+              playing ? "" : "hidden"
+            }>⏸</button>
+          <button type="button" class="map-radar-btn ${disableClass}" ${disableAttr}
+            data-radar-action="next" aria-label="Nächster Frame">⏭</button>
+        </div>
+      </div>
+      <div class="map-radar-timeline" role="group" aria-label="Radar-Timeline">
+        <span class="map-radar-timeline-label">${label}</span>
+        <div class="map-radar-timeline-track" data-radar-track="true" ${
+          activeFrames.length ? "" : 'data-disabled="true"'
+        }>
+          <div class="map-radar-timeline-fill" style="width:${progress}%"></div>
+          <div class="map-radar-timeline-thumb" style="left:${progress}%"></div>
+        </div>
+      </div>
+      <div class="map-radar-meta">
+        <span>${context}</span>
+        <span>${activeFrames.length} Frames</span>
+      </div>
+      ${
+        overlayActive
+          ? ""
+          : '<p class="map-radar-hint">Radar-Overlay in der Toolbar aktivieren, um es auf der Karte einzublenden.</p>'
+      }
+    `;
+  }
+
+  _handleRadarControlClick(event) {
+    const modeBtn = event.target.closest("[data-radar-mode]");
+    if (modeBtn) {
+      if (modeBtn.disabled) return;
+      const mode = modeBtn.getAttribute("data-radar-mode");
+      this._handleRadarModeSwitch(mode);
+      return;
+    }
+
+    const actionBtn = event.target.closest("[data-radar-action]");
+    if (actionBtn) {
+      if (actionBtn.disabled || actionBtn.classList.contains("is-disabled")) {
+        return;
+      }
+      const action = actionBtn.getAttribute("data-radar-action");
+      this._handleRadarAction(action);
+    }
+  }
+
+  _handleRadarTimelinePointer(event) {
+    const track = event.target.closest("[data-radar-track]");
+    if (!track || track.getAttribute("data-disabled") === "true") {
+      return;
+    }
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
+    event.preventDefault();
+    const rect = track.getBoundingClientRect();
+    if (!rect.width) return;
+    const percent = (event.clientX - rect.left) / rect.width;
+    this._scrubRainViewerTimeline(percent);
+  }
+
+  _handleRadarModeSwitch(mode) {
+    if (!mode || mode === this.rainViewerMode) return;
+    this.rainViewerMode = mode;
+    const frames = this._getActiveRainViewerFrames();
+    if (!frames.length) {
+      this._renderRadarControls();
+      return;
+    }
+    this.rainViewerFrameIndex = Math.max(frames.length - 1, 0);
+    this._applyRainViewerFrameChange();
+  }
+
+  _handleRadarAction(action) {
+    switch (action) {
+      case "prev":
+        this._stepRainViewerFrame(-1);
+        break;
+      case "next":
+        this._stepRainViewerFrame(1);
+        break;
+      case "play":
+        this._startRainViewerPlayback();
+        break;
+      case "pause":
+        this._stopRainViewerPlayback();
+        break;
+      default:
+        break;
+    }
+  }
+
+  _scrubRainViewerTimeline(percent) {
+    const frames = this._getActiveRainViewerFrames();
+    if (!frames.length) return;
+    const clamped = Math.min(Math.max(percent, 0), 1);
+    const index = Math.round(clamped * (frames.length - 1));
+    this._setRainViewerFrame(index);
+  }
+
+  _stepRainViewerFrame(delta) {
+    const frames = this._getActiveRainViewerFrames();
+    if (!frames.length) return;
+    const length = frames.length;
+    const nextIndex =
+      (((this.rainViewerFrameIndex + delta) % length) + length) % length;
+    this._setRainViewerFrame(nextIndex);
+  }
+
+  _setRainViewerFrame(index) {
+    const frames = this._getActiveRainViewerFrames();
+    if (!frames.length) return;
+    const length = frames.length;
+    const clamped = Math.min(Math.max(index, 0), length - 1);
+    this.rainViewerFrameIndex = clamped;
+    this._applyRainViewerFrameChange();
+  }
+
+  _startRainViewerPlayback() {
+    if (this.rainViewerIsPlaying) return;
+    if (!this._getActiveRainViewerFrames().length) return;
+    this.rainViewerIsPlaying = true;
+    if (this.rainViewerPlaybackHandle) {
+      clearInterval(this.rainViewerPlaybackHandle);
+    }
+    this.rainViewerPlaybackHandle = setInterval(() => {
+      this._stepRainViewerFrame(1);
+    }, 900);
+    this._renderRadarControls();
+  }
+
+  _stopRainViewerPlayback(options = {}) {
+    const silent = Boolean(options.silent);
+    if (this.rainViewerPlaybackHandle) {
+      clearInterval(this.rainViewerPlaybackHandle);
+      this.rainViewerPlaybackHandle = null;
+    }
+    if (!this.rainViewerIsPlaying) {
+      this.rainViewerIsPlaying = false;
+      return;
+    }
+    this.rainViewerIsPlaying = false;
+    if (!silent) {
+      this._renderRadarControls();
+    }
+  }
+
+  _applyRainViewerFrameChange() {
+    const url = this._getActiveRainViewerTileUrl();
+    if (!url) {
+      this._renderRadarControls();
+      return;
+    }
+    this.rainViewerTileUrl = url;
+    const layer = this.overlayLayerByKey.get("radar");
+    if (layer && typeof layer.setUrl === "function") {
+      layer.setUrl(url);
+    }
+    this._renderRadarControls();
+  }
+
+  _getActiveRainViewerFrames(mode = this.rainViewerMode) {
+    if (!this.rainViewerFrames) return [];
+    return this.rainViewerFrames[mode] || [];
+  }
+
+  _getActiveRainViewerFrame() {
+    const frames = this._getActiveRainViewerFrames();
+    if (!frames.length) return null;
+    const index = Math.min(
+      Math.max(this.rainViewerFrameIndex, 0),
+      frames.length - 1
+    );
+    return frames[index];
+  }
+
+  _getActiveRainViewerTileUrl() {
+    const frame = this._getActiveRainViewerFrame();
+    if (!frame) return null;
+    return this._buildRainViewerTileUrl(frame);
+  }
+
+  _buildRainViewerTileUrl(frame) {
+    if (!frame?.path) return null;
+    return `https://tilecache.rainviewer.com/v2/radar/${frame.path}/512/{z}/{x}/{y}/2/1_1.png`;
+  }
+
+  _formatRadarFrameLabel(frame) {
+    if (!frame?.time) return "–";
+    const formatter = new Intl.DateTimeFormat(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    return formatter.format(new Date(frame.time));
+  }
+
+  _formatRadarFrameContext(frame) {
+    if (!frame?.time) return "Keine Daten";
+    const modeLabel = frame.type === "past" ? "Rückblick" : "Vorhersage";
+    const diffMinutes = Math.round((frame.time - Date.now()) / 60000);
+    let relative = "jetzt";
+    if (diffMinutes > 0) {
+      relative = `+${diffMinutes} min`;
+    } else if (diffMinutes < 0) {
+      relative = `${diffMinutes} min`;
+    }
+    return `${modeLabel} · ${relative}`;
+  }
+
+  _normalizeRainViewerFrames(frames, type) {
+    if (!Array.isArray(frames)) return [];
+    return frames
+      .filter((frame) => frame && frame.path)
+      .map((frame) => ({
+        id: `${type}-${frame.time || frame.path}`,
+        path: frame.path,
+        time: (frame.time || 0) * 1000,
+        type,
+      }));
+  }
+
+  _ingestRainViewerPayload(payload) {
+    const past = this._normalizeRainViewerFrames(payload?.radar?.past, "past");
+    const nowcast = this._normalizeRainViewerFrames(
+      payload?.radar?.nowcast,
+      "nowcast"
+    );
+    if (!past.length && !nowcast.length) {
+      throw new Error("Kein Radar-Frame verfügbar");
+    }
+    this.rainViewerFrames = { past, nowcast };
+    if (
+      !this.rainViewerMode ||
+      !this.rainViewerFrames[this.rainViewerMode]?.length
+    ) {
+      this.rainViewerMode = nowcast.length ? "nowcast" : "past";
+    }
+    const activeFrames = this._getActiveRainViewerFrames();
+    this.rainViewerFrameIndex = activeFrames.length
+      ? Math.max(activeFrames.length - 1, 0)
+      : 0;
+    this.rainViewerTileUrl = this._getActiveRainViewerTileUrl();
+    this.rainViewerFetchedAt = Date.now();
   }
 
   _ensureLegendTarget() {
@@ -705,8 +1102,9 @@ class WeatherMap {
     if (config.requiresKey) {
       message =
         "OpenWeatherMap Overlays konnten nicht geladen werden – bitte API-Key pruefen.";
-      if (window.updateApiStatusEntry) {
-        window.updateApiStatusEntry("openweathermap", {
+      const win = getAugmentedWindow();
+      if (win?.updateApiStatusEntry) {
+        win.updateApiStatusEntry("openweathermap", {
           state: "invalid-key",
           message: "Overlay konnte nicht geladen werden",
           detail: "OpenWeatherMap meldete einen Fehler beim Laden der Tiles.",
@@ -758,6 +1156,22 @@ class WeatherMap {
         clearTimeout;
       caf(this._invalidateHandle);
       this._invalidateHandle = null;
+    }
+
+    this._stopRainViewerPlayback({ silent: true });
+    if (this.radarControlsEl && this._radarControlHandler) {
+      this.radarControlsEl.removeEventListener(
+        "click",
+        this._radarControlHandler
+      );
+      this._radarControlHandler = null;
+    }
+    if (this.radarControlsEl && this._radarTimelineHandler) {
+      this.radarControlsEl.removeEventListener(
+        "pointerdown",
+        this._radarTimelineHandler
+      );
+      this._radarTimelineHandler = null;
     }
   }
 
@@ -848,6 +1262,13 @@ class MapDataInspector {
     this.weatherMap = null;
     this._mousemoveHandler = null;
     this._mouseoutHandler = null;
+    this.pointer = null;
+    this.pointerKey = null;
+    this.latestKey = null;
+    this.loadingKey = null;
+    this.loading = false;
+    this.tooltipEl = null;
+    this.mapContainer = null;
   }
 
   bindToMap(weatherMap) {
@@ -864,6 +1285,21 @@ class MapDataInspector {
     this._mouseoutHandler = () => this._handlePointer(null);
     weatherMap.map.on("mousemove", this._mousemoveHandler);
     weatherMap.map.on("mouseout", this._mouseoutHandler);
+    this._ensureTooltipContainer();
+    this._render();
+  }
+
+  _ensureTooltipContainer() {
+    if (this.tooltipEl || !this.weatherMap?.map) return;
+    const container = this.weatherMap.map.getContainer();
+    if (!container) return;
+    container.classList.add("weather-map-container");
+    this.mapContainer = container;
+    const tooltip = document.createElement("div");
+    tooltip.className = "map-hover-tooltip is-hidden";
+    tooltip.setAttribute("role", "status");
+    container.appendChild(tooltip);
+    this.tooltipEl = tooltip;
   }
 
   setMode(mode) {
@@ -876,17 +1312,30 @@ class MapDataInspector {
   _handlePointer(latlng) {
     if (!latlng) {
       this.pointer = null;
+      this.pointerKey = null;
+      this.loadingKey = null;
+      this.loading = false;
       if (this.hoverTimer) {
         clearTimeout(this.hoverTimer);
         this.hoverTimer = null;
       }
+      this._renderTooltip();
       return;
     }
     this.pointer = latlng;
+    this.pointerKey = this._buildCacheKey(latlng);
     if (this.hoverTimer) {
       clearTimeout(this.hoverTimer);
     }
+    this.loading = true;
+    this.loadingKey = this.pointerKey;
+    this._renderTooltip();
     this.hoverTimer = setTimeout(() => this._fetchData(latlng), 180);
+  }
+
+  _buildCacheKey(latlng) {
+    if (!latlng) return null;
+    return `${latlng.lat.toFixed(2)},${latlng.lng.toFixed(2)}`;
   }
 
   async _fetchData(latlng) {
@@ -894,13 +1343,20 @@ class MapDataInspector {
     const lon = latlng.lng;
     const roundedLat = lat.toFixed(2);
     const roundedLon = lon.toFixed(2);
-    const cacheKey = `${roundedLat},${roundedLon}`;
+    const cacheKey = this._buildCacheKey(latlng);
+    if (!cacheKey) return;
     const cached = this.cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < 10 * 60 * 1000) {
       this.latestData = cached.data;
+      this.latestKey = cacheKey;
+      this.loading = false;
+      this.loadingKey = null;
       this._render();
       return;
     }
+    this.loading = true;
+    this.loadingKey = cacheKey;
+    this._renderTooltip();
     try {
       const weatherUrl = new URL("https://api.open-meteo.com/v1/forecast");
       weatherUrl.search = new URLSearchParams({
@@ -927,19 +1383,38 @@ class MapDataInspector {
       ]);
       const weather = weatherRes.ok ? await weatherRes.json() : null;
       const air = airRes.ok ? await airRes.json() : null;
-      this.latestData = this._normalizeData(
+      const normalized = this._normalizeData(
         weather,
         air,
         roundedLat,
         roundedLon
       );
       this.cache.set(cacheKey, {
-        data: this.latestData,
+        data: normalized,
         timestamp: Date.now(),
       });
+
+      if (this.pointerKey && this.pointerKey !== cacheKey) {
+        if (this.loadingKey === cacheKey) {
+          this.loading = false;
+          this.loadingKey = null;
+          this._renderTooltip();
+        }
+        return;
+      }
+
+      this.latestData = normalized;
+      this.latestKey = cacheKey;
+      this.loading = false;
+      this.loadingKey = null;
       this._render();
     } catch (error) {
       console.warn("MapDataInspector", error);
+      if (this.loadingKey === cacheKey) {
+        this.loading = false;
+        this.loadingKey = null;
+        this._renderTooltip();
+      }
     }
   }
 
@@ -1051,6 +1526,11 @@ class MapDataInspector {
   }
 
   _render() {
+    this._renderPanel();
+    this._renderTooltip();
+  }
+
+  _renderPanel() {
     if (!this.outputEl) return;
     if (!this.latestData) {
       this.outputEl.innerHTML =
@@ -1074,6 +1554,85 @@ class MapDataInspector {
     `;
   }
 
+  _renderTooltip() {
+    this._ensureTooltipContainer();
+    if (!this.tooltipEl || !this.weatherMap?.map) return;
+    if (!this.pointer) {
+      this.tooltipEl.classList.add("is-hidden");
+      return;
+    }
+
+    const pointerKey = this.pointerKey;
+    const hasFreshData =
+      pointerKey && this.latestKey === pointerKey && this.latestData;
+    const isLoading = this.loading && this.loadingKey === pointerKey;
+
+    if (!hasFreshData && !isLoading) {
+      this.tooltipEl.classList.add("is-hidden");
+      return;
+    }
+
+    if (!hasFreshData) {
+      this.tooltipEl.innerHTML =
+        '<div class="map-hover-loading">Ermittle Daten…</div>';
+      this.tooltipEl.classList.add("is-loading");
+    } else {
+      const data = this.latestData;
+      const content = `
+        <div class="map-hover-row">
+          <div>
+            <p class="map-hover-label">Temperatur</p>
+            <p class="map-hover-temp">${this._formatTemp(data.temperature)}</p>
+          </div>
+          <div>
+            <p class="map-hover-label">Gefühlt</p>
+            <p>${this._formatTemp(data.feelsLike)}</p>
+          </div>
+        </div>
+        <div class="map-hover-row secondary">
+          <span>Wind: ${this._formatValue(data.windSpeed, " km/h")}</span>
+          <span>Regen: ${this._formatValue(
+            data.precipitation,
+            " mm/h",
+            2
+          )}</span>
+        </div>
+        <div class="map-hover-row secondary">
+          <span>Wolken: ${this._formatValue(data.clouds, "%")}</span>
+          <span>Feuchte: ${this._formatValue(data.humidity, "%")}</span>
+        </div>
+      `;
+      this.tooltipEl.innerHTML = content;
+      this.tooltipEl.classList.remove("is-loading");
+    }
+
+    this.tooltipEl.classList.remove("is-hidden");
+    this._positionTooltip();
+  }
+
+  _positionTooltip() {
+    if (!this.tooltipEl || !this.weatherMap?.map || !this.pointer) return;
+    const container = this.mapContainer || this.weatherMap.map.getContainer();
+    if (!container) return;
+    const point = this.weatherMap.map.latLngToContainerPoint(this.pointer);
+    const tooltipRect = this.tooltipEl.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    let left = point.x + 16;
+    let top = point.y + 16;
+
+    if (left + tooltipRect.width > containerRect.width) {
+      left = point.x - tooltipRect.width - 16;
+    }
+    if (top + tooltipRect.height > containerRect.height) {
+      top = point.y - tooltipRect.height - 16;
+    }
+
+    left = Math.max(8, left);
+    top = Math.max(8, top);
+
+    this.tooltipEl.style.transform = `translate(${left}px, ${top}px)`;
+  }
+
   _formatValue(value, suffix = "", digits = 0) {
     if (value === null || value === undefined || Number.isNaN(value)) {
       return "–";
@@ -1082,7 +1641,7 @@ class MapDataInspector {
   }
 
   _formatTemp(value) {
-    return this._formatValue(value, " degC", 1);
+    return this._formatValue(value, " °C", 1);
   }
 }
 
@@ -1285,6 +1844,7 @@ class HistoricalChart {
   constructor(containerId) {
     this.containerId = containerId;
     this.chart = null;
+    this.chartLib = getChartInstance();
   }
 
   async fetchAndRender(lat, lon, city) {
@@ -1363,7 +1923,7 @@ class HistoricalChart {
     const canvas = container.querySelector("#historical-chart-canvas");
     if (!canvas) return;
 
-    if (typeof Chart === "undefined") {
+    if (!this.chartLib) {
       container.insertAdjacentHTML(
         "beforeend",
         '<p class="historical-error">Chart.js nicht geladen</p>'
@@ -1375,7 +1935,7 @@ class HistoricalChart {
       this.chart.destroy();
     }
 
-    this.chart = new Chart(canvas, {
+    this.chart = new this.chartLib(canvas, {
       type: "line",
       data: {
         labels,
@@ -1520,7 +2080,7 @@ class HistoricalChart {
     }
     const sorted = entries
       .slice()
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     const chartEntries = sorted.slice(-30);
     const monthlyBuckets = this._aggregateMonthly(sorted);
     const yearTrend = monthlyBuckets.slice(-12);
@@ -1920,10 +2480,13 @@ class Analytics {
       </div>
     `;
 
-    const toggle = document.getElementById("analytics-toggle");
+    const toggle = /** @type {HTMLInputElement | null} */ (
+      document.getElementById("analytics-toggle")
+    );
     if (toggle) {
       toggle.addEventListener("change", (event) => {
-        this.enabled = event.target.checked;
+        const input = /** @type {HTMLInputElement} */ (event.target);
+        this.enabled = Boolean(input?.checked);
         localStorage.setItem("wetter_analytics_enabled", String(this.enabled));
       });
     }
@@ -1946,8 +2509,13 @@ class Analytics {
 }
 
 // Global exports
-window.WeatherMap = WeatherMap;
-window.MapDataInspector = MapDataInspector;
-window.WeatherAlerts = WeatherAlerts;
-window.HistoricalChart = HistoricalChart;
-window.Analytics = Analytics;
+const globalWindow = /** @type {Record<string, any> | undefined} */ (
+  getAugmentedWindow()
+);
+if (globalWindow) {
+  globalWindow.WeatherMap = WeatherMap;
+  globalWindow.MapDataInspector = MapDataInspector;
+  globalWindow.WeatherAlerts = WeatherAlerts;
+  globalWindow.HistoricalChart = HistoricalChart;
+  globalWindow.Analytics = Analytics;
+}
