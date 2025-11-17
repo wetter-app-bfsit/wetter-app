@@ -35,13 +35,37 @@ class APIKeyManager {
   }
 
   _purgeStaleDemoKeys() {
-    const staleKeys = {
-      openweathermap: new Set(["9f79d40dc85bebc834364783854eefbd"]),
-      visualcrossing: new Set(["JVCZ3WAHB5XBT7GXQC7RQBGBE"]),
-      meteostat: new Set([
-        "edda72c60bmsh4a38c4687147239p14e8d5jsn6f578346b68a",
-      ]),
+    const runtimeOverrides =
+      typeof window !== "undefined" &&
+      window.__APP_STALE_API_KEYS &&
+      typeof window.__APP_STALE_API_KEYS === "object"
+        ? window.__APP_STALE_API_KEYS
+        : {};
+
+    const toSet = (value) => {
+      if (!value) return new Set();
+      if (value instanceof Set) return value;
+      if (Array.isArray(value)) {
+        return new Set(value.filter(Boolean));
+      }
+      if (typeof value === "string") {
+        return new Set([value]);
+      }
+      return new Set();
     };
+
+    const defaultStale = {
+      openweathermap: new Set(),
+      visualcrossing: new Set(),
+      meteostat: new Set(),
+    };
+
+    const staleKeys = Object.keys(defaultStale).reduce((acc, provider) => {
+      acc[provider] = toSet(
+        runtimeOverrides[provider] || defaultStale[provider]
+      );
+      return acc;
+    }, {});
 
     Object.entries(staleKeys).forEach(([provider, blacklist]) => {
       const key = this.keys[provider];
