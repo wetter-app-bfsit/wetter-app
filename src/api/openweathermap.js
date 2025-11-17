@@ -25,6 +25,10 @@ class OpenWeatherMapAPI {
         label: "One Call 2.5 (Legacy)",
       },
     ];
+    this.freeTierEndpoints = {
+      current: "https://api.openweathermap.org/data/2.5/weather",
+      forecast: "https://api.openweathermap.org/data/2.5/forecast",
+    };
   }
 
   /**
@@ -101,12 +105,23 @@ class OpenWeatherMapAPI {
         }
       }
 
-      if (lastError) {
-        throw lastError;
+      if (lastError && this._shouldUseFreeTierBundle(lastError)) {
+        console.warn(
+          "OpenWeatherMap One Call nicht verfügbar – wechsle auf Current/Forecast Free Tier."
+        );
+        return await this._fetchFreeTierBundle({
+          latitude,
+          longitude,
+          apiKey: sanitizedKey,
+          units,
+        });
       }
 
-      throw new Error(
-        "OpenWeatherMap One Call konnte nicht geladen werden (keine gültige API-Version verfügbar)"
+      throw (
+        lastError ||
+        new Error(
+          "OpenWeatherMap One Call konnte nicht geladen werden (keine gültige API-Version verfügbar)"
+        )
       );
     } catch (error) {
       const classified = this._classifyError(error);
@@ -185,6 +200,161 @@ class OpenWeatherMapAPI {
       message.includes("3.0");
 
     return httpStatusMatch || invalidKeyHint || blockedHint || subscriptionHint;
+  }
+
+  _shouldUseFreeTierBundle(error) {
+    const message = (error?.message || "").toLowerCase();
+    if (!message) return false;
+    const authProblem =
+      message.includes("401") ||
+      message.includes("403") ||
+      message.includes("invalid api key") ||
+      message.includes("appid") ||
+      message.includes("blocked");
+    const planHint =
+      message.includes("subscription") ||
+      message.includes("plan") ||
+      message.includes("billing");
+    return authProblem || planHint;
+  }
+
+  async _fetchFreeTierBundle({ latitude, longitude, apiKey, units }) {
+    const params = new URLSearchParams({
+      lat: latitude.toFixed(4),
+      lon: longitude.toFixed(4),
+      appid: apiKey,
+      units,
+    });
+
+    const currentUrl = `${this.freeTierEndpoints.current}?${params.toString()}`;
+    const forecastUrl = `${
+      this.freeTierEndpoints.forecast
+    }?${params.toString()}`;
+
+    const startTime = Date.now();
+    const [currentResp, forecastResp] = await Promise.all([
+      safeApiFetch(currentUrl, {}, this.timeout),
+      safeApiFetch(forecastUrl, {}, this.timeout),
+    ]);
+
+    const [currentData, forecastData] = await Promise.all([
+      currentResp.json(),
+      forecastResp.json(),
+    ]);
+
+    const validation = this._validateFreeTierResponse(
+      currentData,
+      forecastData
+    );
+    if (!validation.valid) {
+      throw new Error(validation.error);
+    }
+
+    const formatted = this._formatFreeTierData(currentData, forecastData);
+    const duration = Date.now() - startTime;
+
+    return {
+      data: formatted,
+      current: formatted.current,
+      hourly: formatted.hourly,
+      daily: formatted.daily,
+      fromCache: false,
+      duration,
+      state: "online",
+      statusMessage: `Free Tier · ${duration}ms`,
+      detail:
+        "OpenWeatherMap Free Tier (Current + 5-Tage/3h Prognose) – One Call nicht verfügbar",
+      source: "openweathermap",
+    };
+  }
+
+  _validateFreeTierResponse(current, forecast) {
+    if (!current || !current.main || !current.weather) {
+      return {
+        valid: false,
+        error: "OpenWeatherMap (Free Tier): Ungültige Current Weather Antwort",
+      };
+    }
+    if (!forecast || !Array.isArray(forecast.list) || !forecast.list.length) {
+      return {
+        valid: false,
+        error: "OpenWeatherMap (Free Tier): Ungültige Forecast Antwort",
+      };
+    }
+    return { valid: true, error: null };
+  }
+
+  _formatFreeTierData(currentData, forecastData) {
+    const current = {
+      temp: currentData.main.temp,
+      humidity: currentData.main.humidity,
+      wind_speed: currentData.wind?.speed ?? 0,
+      pressure: currentData.main.pressure,
+      clouds: currentData.clouds?.all ?? 0,
+      weather_code: this._mapWeatherCode(currentData.weather?.[0]?.main),
+      description: currentData.weather?.[0]?.description || "Unbekannt",
+      timestamp: currentData.dt * 1000,
+    };
+
+    const hourly = this._buildHourlyFromForecast(forecastData.list);
+    const daily = this._buildDailyFromForecast(forecastData.list);
+
+    return { current, hourly, daily };
+  }
+
+  _buildHourlyFromForecast(entries = []) {
+    return entries.slice(0, 24).map((entry) => ({
+      temp: entry.main?.temp ?? 0,
+      precipitation: (entry.pop || 0) * 100,
+      rain_volume: entry.rain?.["3h"] || 0,
+      wind_speed: entry.wind?.speed ?? 0,
+      timestamp: entry.dt * 1000,
+      weather_code: this._mapWeatherCode(entry.weather?.[0]?.main),
+    }));
+  }
+
+  _buildDailyFromForecast(entries = []) {
+    const buckets = new Map();
+    entries.forEach((entry) => {
+      const date = new Date(entry.dt * 1000).toISOString().split("T")[0];
+      if (!buckets.has(date)) {
+        buckets.set(date, {
+          temp_min: entry.main?.temp_min,
+          temp_max: entry.main?.temp_max,
+          precipitation: (entry.pop || 0) * 100,
+          rain_volume: entry.rain?.["3h"] || 0,
+          wind_speed: entry.wind?.speed ?? 0,
+          weather_code: this._mapWeatherCode(entry.weather?.[0]?.main),
+        });
+        return;
+      }
+
+      const bucket = buckets.get(date);
+      bucket.temp_min = Math.min(
+        bucket.temp_min,
+        entry.main?.temp_min ?? bucket.temp_min
+      );
+      bucket.temp_max = Math.max(
+        bucket.temp_max,
+        entry.main?.temp_max ?? bucket.temp_max
+      );
+      bucket.precipitation = Math.max(
+        bucket.precipitation,
+        (entry.pop || 0) * 100
+      );
+      bucket.rain_volume += entry.rain?.["3h"] || 0;
+      bucket.wind_speed = Math.max(
+        bucket.wind_speed,
+        entry.wind?.speed ?? bucket.wind_speed
+      );
+    });
+
+    return Array.from(buckets.entries())
+      .slice(0, 7)
+      .map(([date, values]) => ({
+        date,
+        ...values,
+      }));
   }
 
   /**
