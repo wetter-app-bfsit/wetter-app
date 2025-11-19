@@ -1607,6 +1607,9 @@ async function loadWeather(city) {
     searchComponent.setLoading(false);
   }
 }
+if (typeof window !== "undefined") {
+  window.loadWeather = loadWeather;
+}
 
 /**
  * Initialisierung

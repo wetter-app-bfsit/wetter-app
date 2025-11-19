@@ -15,6 +15,7 @@
  *     service: string,
  *     status: { state: string; message: string; detail?: string }
  *   ) => void;
+ *   loadWeather?: (city: string) => Promise<void> | void;
  *   L?: any;
  *   Chart?: any;
  * }} AugmentedWindow
@@ -416,21 +417,9 @@ class WeatherMap {
       this._updateLegendEntry(config, "available", config.provider || "");
     });
 
-    if (this.layerControl) {
-      this.layerControl.remove();
-      this.layerControl = null;
-    }
-
     const hasOverlays = Object.keys(overlays).length > 0;
 
     if (hasOverlays) {
-      this.layerControl = this.leaflet.control.layers(
-        { "Standard (OSM)": this.baseLayer },
-        overlays,
-        { collapsed: false }
-      );
-      this.layerControl.addTo(this.map);
-
       if (!this.currentOverlay) {
         this._activateDefaultOverlay(overlays);
       }
@@ -708,16 +697,21 @@ class WeatherMap {
     this.rainViewerError = null;
     this._renderRadarControls();
 
-    const requestInit = {
+    const requestInit = /** @type {RequestInit} */ ({
       cache: "no-store",
       headers: {
         Accept: "application/json",
       },
       mode: "cors",
+    });
+
+    const withCacheBust = (url) => {
+      const separator = url.includes("?") ? "&" : "?";
+      return `${url}${separator}ts=${Date.now()}`;
     };
 
     const fetchJson = (url, label) =>
-      fetch(`${url}?ts=${Date.now()}`, requestInit).then((response) => {
+      fetch(withCacheBust(url), requestInit).then((response) => {
         if (!response.ok) {
           throw new Error(`${label} (${response.status})`);
         }
@@ -726,6 +720,9 @@ class WeatherMap {
 
     const primaryUrl = "https://api.rainviewer.com/public/weather-maps.json";
     const legacyUrl = "https://tilecache.rainviewer.com/api/maps.json";
+    const proxyUrlIso = `https://cors.isomorphic-git.org/${primaryUrl}`;
+    const proxyUrlAllOrigins =
+      "https://api.allorigins.win/raw?url=" + encodeURIComponent(primaryUrl);
 
     const processPayload = (payload, mode) => {
       if (mode === "legacy") {
@@ -748,16 +745,36 @@ class WeatherMap {
       return true;
     };
 
-    this.rainViewerPromise = fetchJson(primaryUrl, "RainViewer v2")
-      .then((payload) => processPayload(payload, "primary"))
-      .catch((primaryError) => {
-        console.warn("RainViewer v2 Endpoint fehlgeschlagen", primaryError);
-        return fetchJson(legacyUrl, "RainViewer legacy")
-          .then((payload) => processPayload(payload, "legacy"))
-          .catch((legacyError) => {
-            throw legacyError || primaryError;
-          });
-      })
+    const attemptSequence = async () => {
+      const targets = [
+        { url: primaryUrl, label: "RainViewer v2", mode: "primary" },
+        { url: legacyUrl, label: "RainViewer legacy", mode: "legacy" },
+        {
+          url: proxyUrlIso,
+          label: "RainViewer Proxy (isomorphic-git)",
+          mode: "primary",
+        },
+        {
+          url: proxyUrlAllOrigins,
+          label: "RainViewer Proxy (allorigins)",
+          mode: "primary",
+        },
+      ];
+
+      let lastError = null;
+      for (const target of targets) {
+        try {
+          const payload = await fetchJson(target.url, target.label);
+          return processPayload(payload, target.mode);
+        } catch (error) {
+          lastError = error;
+          console.warn(`${target.label} fehlgeschlagen`, error);
+        }
+      }
+      throw lastError || new Error("RainViewer API nicht erreichbar");
+    };
+
+    this.rainViewerPromise = attemptSequence()
       .then((success) => {
         if (success) {
           this.refreshOverlays();
@@ -826,6 +843,11 @@ class WeatherMap {
     this.noticeEl = notice;
   }
 
+  _announceNotice(message) {
+    if (!this.noticeEl || !message) return;
+    this.noticeEl.textContent = message;
+  }
+
   _ensureRadarControlsTarget() {
     if (this.radarControlsEl) return;
     const target = document.getElementById("map-radar-controls");
@@ -860,6 +882,10 @@ class WeatherMap {
           this.map.flyTo(latLng, zoom, { duration: 0.65 });
           this.marker.openPopup();
         }
+        const geoStarted = this._locateUserPosition();
+        if (!geoStarted && !this.marker) {
+          this._announceNotice("Kein gespeicherter Standort zum Zentrieren.");
+        }
         break;
       }
       case "radar": {
@@ -882,6 +908,80 @@ class WeatherMap {
       }
       default:
         break;
+    }
+  }
+
+  _locateUserPosition() {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      this._announceNotice(
+        "Geolokalisierung wird von diesem Gerät nicht unterstützt."
+      );
+      return false;
+    }
+
+    this._announceNotice("Bestimme aktuellen Standort…");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const zoom = Math.max(this.map?.getZoom() || 0, 11);
+        this._setMarker(latitude, longitude, "Aktueller Standort");
+        this.map?.flyTo([latitude, longitude], zoom, { duration: 0.8 });
+        this.marker?.openPopup();
+        this._announceNotice("Standort gefunden – lade Wetterdaten…");
+        this._syncWeatherWithGeolocation(latitude, longitude);
+      },
+      (error) => {
+        console.warn("Geolokalisierung fehlgeschlagen", error);
+        const reason =
+          error?.message || "Standort konnte nicht ermittelt werden.";
+        this._announceNotice(reason);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 8000,
+        maximumAge: 120000,
+      }
+    );
+    return true;
+  }
+
+  async _syncWeatherWithGeolocation(lat, lon) {
+    try {
+      const url =
+        "https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&addressdetails=1&lat=" +
+        encodeURIComponent(lat) +
+        "&lon=" +
+        encodeURIComponent(lon);
+      const response = await fetch(url, {
+        headers: { "Accept-Language": "de" },
+      });
+      if (!response.ok) {
+        throw new Error(
+          `Reverse-Geocoding fehlgeschlagen (${response.status})`
+        );
+      }
+      const payload = await response.json();
+      const resolvedCity =
+        payload?.address?.city ||
+        payload?.address?.town ||
+        payload?.address?.village ||
+        payload?.address?.county ||
+        "Aktueller Standort";
+      this._setMarker(lat, lon, resolvedCity);
+      const input = /** @type {HTMLInputElement | null} */ (
+        document.getElementById("cityInput")
+      );
+      if (input) {
+        input.value = resolvedCity;
+      }
+      const win = getAugmentedWindow();
+      if (typeof win?.loadWeather === "function") {
+        win.loadWeather(resolvedCity);
+      }
+      this._announceNotice(`Standort ${resolvedCity} geladen.`);
+    } catch (error) {
+      console.warn("Reverse-Geocoding nicht möglich", error);
+      this._announceNotice("Standort gefunden – bitte Ort manuell bestätigen.");
     }
   }
 
@@ -926,6 +1026,7 @@ class WeatherMap {
 
     const pastFrames = this.rainViewerFrames?.past || [];
     const nowcastFrames = this.rainViewerFrames?.nowcast || [];
+    const satelliteFrames = this.rainViewerSatelliteFrames || [];
     let activeFrames = this._getActiveRainViewerFrames();
     if (!activeFrames.length) {
       if (pastFrames.length && this.rainViewerMode !== "past") {
@@ -933,6 +1034,9 @@ class WeatherMap {
         activeFrames = this._getActiveRainViewerFrames();
       } else if (nowcastFrames.length && this.rainViewerMode !== "nowcast") {
         this.rainViewerMode = "nowcast";
+        activeFrames = this._getActiveRainViewerFrames();
+      } else if (satelliteFrames.length && this.rainViewerMode !== "infrared") {
+        this.rainViewerMode = "infrared";
         activeFrames = this._getActiveRainViewerFrames();
       }
     }
@@ -981,6 +1085,7 @@ class WeatherMap {
         <div class="map-radar-mode" role="group" aria-label="Radar-Zeitraum">
           ${modeButton("past", "Rückblick", pastFrames.length)}
           ${modeButton("nowcast", "Vorhersage", nowcastFrames.length)}
+          ${modeButton("infrared", "Satellit", satelliteFrames.length)}
         </div>
         <div class="map-radar-playback" role="group" aria-label="Radar-Steuerung">
           <button type="button" class="map-radar-btn ${disableClass}" ${disableAttr}
@@ -1013,7 +1118,7 @@ class WeatherMap {
       ${
         overlayActive
           ? ""
-          : '<p class="map-radar-hint">Radar-Overlay in der Toolbar aktivieren, um es auf der Karte einzublenden.</p>'
+          : '<p class="map-radar-hint">Radar/Satellit-Overlay in der Toolbar aktivieren, um es auf der Karte einzublenden.</p>'
       }
     `;
   }
@@ -1197,6 +1302,9 @@ class WeatherMap {
 
   _getActiveRainViewerFrames(mode = this.rainViewerMode) {
     if (!this.rainViewerFrames) return [];
+    if (mode === "infrared") {
+      return this.rainViewerSatelliteFrames || [];
+    }
     return this.rainViewerFrames[mode] || [];
   }
 
@@ -1253,7 +1361,12 @@ class WeatherMap {
 
   _formatRadarFrameContext(frame) {
     if (!frame?.time) return "Keine Daten";
-    const modeLabel = frame.type === "past" ? "Rückblick" : "Vorhersage";
+    const modeLabel =
+      frame.type === "past"
+        ? "Rückblick"
+        : frame.type === "infrared"
+        ? "Satellit"
+        : "Vorhersage";
     const diffMinutes = Math.round((frame.time - Date.now()) / 60000);
     let relative = "jetzt";
     if (diffMinutes > 0) {
@@ -1286,18 +1399,22 @@ class WeatherMap {
       payload?.satellite?.infrared,
       "infrared"
     );
-    if (!past.length && !nowcast.length) {
+    if (!past.length && !nowcast.length && !satellite.length) {
       throw new Error("Kein Radar-Frame verfügbar");
     }
     this.rainViewerHost = payload?.host || this.rainViewerHost;
     this.rainViewerFrames = { past, nowcast };
     this.rainViewerSatelliteFrames = satellite;
     this.rainViewerFallbackActive = false;
-    if (
-      !this.rainViewerMode ||
-      !this.rainViewerFrames[this.rainViewerMode]?.length
-    ) {
-      this.rainViewerMode = nowcast.length ? "nowcast" : "past";
+    const currentFrames = this._getActiveRainViewerFrames(this.rainViewerMode);
+    if (!this.rainViewerMode || !currentFrames.length) {
+      if (nowcast.length) {
+        this.rainViewerMode = "nowcast";
+      } else if (past.length) {
+        this.rainViewerMode = "past";
+      } else if (satellite.length) {
+        this.rainViewerMode = "infrared";
+      }
     }
     const activeFrames = this._getActiveRainViewerFrames();
     this.rainViewerFrameIndex = activeFrames.length

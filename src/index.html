@@ -260,8 +260,8 @@
               <p class="map-card-eyebrow">Radar · Temperatur · Wind</p>
               <h3>Interaktive Wetterkarte</h3>
               <p class="map-card-subtitle">
-                Wähle oben einen Layer, erkunde Details per Maus und nutze den
-                Radar-Timeline-Regler für Animationen.
+                Karte erkunden, Layer aktivieren und Radar-Timelines direkt
+                unterhalb der Karte steuern.
               </p>
             </div>
             <div class="map-card-status">
@@ -270,133 +270,117 @@
             </div>
           </div>
 
-          <div
-            class="map-card-toolbar"
-            role="toolbar"
-            aria-label="Karten-Layer"
-          >
-            <div id="map-layer-toolbar" class="map-layer-toolbar"></div>
-            <div class="map-toolbar-hint">
-              <span
-                >Tippe auf ein Icon, um zwischen Temperatur, Radar, Wind und
-                weiteren Kartenebenen zu wechseln.</span
-              >
-            </div>
-          </div>
-
-          <div
-            id="map-layer-context"
-            class="map-layer-context"
-            aria-live="polite"
-          >
-            <div class="map-layer-context-body">
-              <div>
-                <p class="map-layer-context-eyebrow">Layer auswählen</p>
-                <strong>Keine Ebene aktiv</strong>
-                <p>
-                  Wähle oben eine Kartenebene, um Datenquellen, Status und
-                  Anzeigeoptionen zu sehen.
-                </p>
-              </div>
-              <div class="map-layer-context-meta">
-                <span class="map-layer-context-badge" data-state="available"
-                  >Bereit</span
-                >
-              </div>
-            </div>
-          </div>
-
-          <div class="map-card-steps" aria-label="Kurzanleitung">
-            <div class="map-card-step">
-              <span class="map-card-step-index">1</span>
-              <div>
-                <strong>Layer wählen</strong>
-                <p>Temperatur, Radar, Wind & mehr direkt über die Toolbar.</p>
-              </div>
-            </div>
-            <div class="map-card-step">
-              <span class="map-card-step-index">2</span>
-              <div>
-                <strong>Radar steuern</strong>
-                <p>
-                  Timeline ziehen oder Play nutzen, um Regenbewegungen zu sehen.
-                </p>
-              </div>
-            </div>
-            <div class="map-card-step">
-              <span class="map-card-step-index">3</span>
-              <div>
-                <strong>Details prüfen</strong>
-                <p>
-                  Mit der Maus über Orte fahren und Infos im Inspector lesen.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div
-            id="map-quick-actions"
-            class="map-quick-actions"
-            role="group"
-            aria-label="Karten Schnellaktionen"
-          >
-            <button
-              type="button"
-              class="map-quick-action-btn"
-              data-map-action="locate"
-            >
-              <span class="map-quick-action-icon">🎯</span>
-              <span class="map-quick-action-text">Standort zentrieren</span>
-            </button>
-            <button
-              type="button"
-              class="map-quick-action-btn"
-              data-map-action="radar"
-            >
-              <span class="map-quick-action-icon">🌧️</span>
-              <span class="map-quick-action-text">Radar aktivieren</span>
-            </button>
-            <button
-              type="button"
-              class="map-quick-action-btn"
-              data-map-action="refresh"
-            >
-              <span class="map-quick-action-icon">🔄</span>
-              <span class="map-quick-action-text">Layer neu laden</span>
-            </button>
-            <button
-              type="button"
-              class="map-quick-action-btn"
-              data-map-action="inspector"
-            >
-              <span class="map-quick-action-icon">📊</span>
-              <span class="map-quick-action-text">Inspector fokussieren</span>
-            </button>
-          </div>
-
           <div class="map-layout">
             <div class="map-canvas-shell">
               <div id="weather-map" class="weather-map"></div>
             </div>
-            <aside class="map-side-panel" aria-label="Karteninformationen">
-              <div
-                id="map-inspector"
-                class="map-inspector"
-                aria-live="polite"
-              ></div>
-              <div
-                id="map-overlay-legend"
-                class="map-overlay-legend"
-                aria-live="polite"
-                aria-label="Status der Kartenlayer"
-              ></div>
+          </div>
+
+          <div class="map-ui-stack">
+            <div class="map-ui-row map-ui-row-radar">
               <div
                 id="map-radar-controls"
                 class="map-radar-controls"
                 aria-live="polite"
                 aria-label="RainViewer Steuerung"
               ></div>
-            </aside>
+            </div>
+
+            <div class="map-ui-row map-ui-row-toolbar">
+              <div
+                class="map-card-toolbar"
+                role="toolbar"
+                aria-label="Karten-Layer"
+              >
+                <div id="map-layer-toolbar" class="map-layer-toolbar"></div>
+                <div class="map-toolbar-hint">
+                  <span
+                    >Tippe auf ein Icon, um zwischen Temperatur, Radar, Wind und
+                    weiteren Ebenen zu wechseln.</span
+                  >
+                </div>
+              </div>
+
+              <div
+                id="map-layer-context"
+                class="map-layer-context"
+                aria-live="polite"
+              >
+                <div class="map-layer-context-body">
+                  <div>
+                    <p class="map-layer-context-eyebrow">Layer auswählen</p>
+                    <strong>Keine Ebene aktiv</strong>
+                    <p>
+                      Wähle eine Kartenebene, um Datenquellen, Status und
+                      Anzeigeoptionen zu sehen.
+                    </p>
+                  </div>
+                  <div class="map-layer-context-meta">
+                    <span class="map-layer-context-badge" data-state="available"
+                      >Bereit</span
+                    >
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="map-ui-row map-ui-row-quick">
+              <div
+                id="map-quick-actions"
+                class="map-quick-actions"
+                role="group"
+                aria-label="Karten Schnellaktionen"
+              >
+                <button
+                  type="button"
+                  class="map-quick-action-btn"
+                  data-map-action="locate"
+                >
+                  <span class="map-quick-action-icon">🎯</span>
+                  <span class="map-quick-action-text">Standort zentrieren</span>
+                </button>
+                <button
+                  type="button"
+                  class="map-quick-action-btn"
+                  data-map-action="radar"
+                >
+                  <span class="map-quick-action-icon">🌧️</span>
+                  <span class="map-quick-action-text">Radar aktivieren</span>
+                </button>
+                <button
+                  type="button"
+                  class="map-quick-action-btn"
+                  data-map-action="refresh"
+                >
+                  <span class="map-quick-action-icon">🔄</span>
+                  <span class="map-quick-action-text">Layer neu laden</span>
+                </button>
+                <button
+                  type="button"
+                  class="map-quick-action-btn"
+                  data-map-action="inspector"
+                >
+                  <span class="map-quick-action-icon">📊</span>
+                  <span class="map-quick-action-text"
+                    >Inspector fokussieren</span
+                  >
+                </button>
+              </div>
+            </div>
+
+            <div class="map-ui-row map-ui-row-panels">
+              <div
+                id="map-overlay-legend"
+                class="map-overlay-legend"
+                aria-live="polite"
+                aria-label="Status der Kartenlayer"
+              ></div>
+              <div id="map-inspector" class="map-inspector" aria-live="polite">
+                <p class="map-inspector-empty">
+                  Bewege die Maus über die Karte, um Messwerte zu sehen.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
