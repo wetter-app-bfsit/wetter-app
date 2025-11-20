@@ -3007,3 +3007,13 @@ if (globalWindow) {
   globalWindow.HistoricalChart = HistoricalChart;
   globalWindow.Analytics = Analytics;
 }
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    WeatherMap,
+    MapDataInspector,
+    WeatherAlerts,
+    HistoricalChart,
+    Analytics,
+  };
+}
