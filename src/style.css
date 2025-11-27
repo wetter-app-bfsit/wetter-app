@@ -950,7 +950,9 @@ body.dark-mode .hourly-item {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: var(--spacing-lg);
+  justify-content: center;   /* NEU: zentriert Grid-Items */
 }
+
 
 .forecast-section-header {
   display: flex;
@@ -1018,16 +1020,28 @@ body.dark-mode .forecast-carousel-indicator {
 
 .forecast-track {
   display: flex;
-  gap: var(--spacing-lg);
   overflow-x: auto;
   scroll-snap-type: x proximity;
-  scroll-padding-left: var(--spacing-lg);
+  gap: var(--spacing-lg);
   padding-left: var(--spacing-lg);
+  padding-right: var(--spacing-lg); /* <-- wichtig */
   padding-top: var(--spacing-lg);
   padding-bottom: var(--spacing-sm);
-  scrollbar-width: thin;
-  scroll-behavior: smooth;
+
+  justify-content: flex-start; /* bleibt */
 }
+
+
+.forecast-track-inner {
+  display: flex;
+  gap: var(--spacing-lg);
+  margin-left: auto;
+  margin-right: auto;  /* <-- das ist okay */
+}
+
+
+
+
 
 @media (prefers-reduced-motion: reduce) {
   .forecast-track {
@@ -1055,7 +1069,7 @@ body.dark-mode .forecast-track::-webkit-scrollbar-thumb {
 
 .forecast-track .forecast-card {
   flex: 0 0 calc(100% / 3 - var(--spacing-lg) * 2 / 3);
-  scroll-snap-align: start;
+  scroll-snap-align: center;
   min-width: 200px;
 }
 
@@ -1436,7 +1450,7 @@ body.dark-mode .precip-bar.is-night {
   margin-top: var(--spacing-xl);
   background: rgba(0, 123, 255, 0.05);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-lg);
+    padding: var(--spacing-lg) 40px;
 }
 
 body.dark-mode .hourly-matrix {
@@ -1452,9 +1466,10 @@ body.dark-mode .hourly-matrix {
 
 .hourly-matrix-row {
   display: grid;
-  grid-template-columns: 110px minmax(700px, 1fr);
+  grid-template-columns: 0px minmax(600px, 1fr);
   gap: var(--spacing-sm);
   align-items: center;
+  
 }
 
 .matrix-header {
@@ -1469,19 +1484,32 @@ body.dark-mode .hourly-matrix {
 .matrix-hour-cells {
   display: grid;
   grid-template-columns: repeat(24, minmax(42px, 1fr));
-  gap: 2px;
+  gap: 5px;
 }
 
 .matrix-cell {
   border-radius: var(--radius-sm);
   border: 1px solid rgba(0, 123, 255, 0.1);
-  padding: 4px;
+  padding: 8px 4px;
   text-align: center;
   font-size: 0.75rem;
-  min-height: 52px;
+  min-height: 20px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
+  width: 50px; /* Breite der Blöcke */
+}
+
+.matrix-cell.lower {
+  min-height: 280px; /* längere unteren Blöcke */
+}
+
+.hourly-matrix-grid.active-dragging {
+  cursor: grabbing;
+}
+
+.hourly-matrix-grid {
+  cursor: grab;
 }
 
 .matrix-cell.is-night {
