@@ -906,6 +906,14 @@ body.dark-mode .hourly-block {
   cursor: grab;
   transition: var(--transition);
   border: 1px solid transparent;
+
+  /* HIER SIND DIE NEUEN ZEILEN GEGEN DIE TEXTAUSWAHL */
+  -webkit-user-select: none; /* Für Safari */
+  -ms-user-select: none;     /* Für Internet Explorer/Edge */
+  user-select: none;         /* Standard-Syntax für moderne Browser */
+  -webkit-touch-callout: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
 }
 
 body.dark-mode .hourly-item {
