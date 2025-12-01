@@ -320,15 +320,155 @@ body.dark-mode .search-section {
   display: flex;
   gap: var(--spacing-md);
   margin-bottom: var(--spacing-lg);
+  flex-wrap: wrap;
 }
 
 .search-input {
   flex: 1;
+  min-width: 200px;
 }
 
 .search-btn {
   flex-shrink: 0;
   min-width: 120px;
+}
+
+/* Autocomplete Dropdown */
+.autocomplete-dropdown {
+  grid-column: 1 / -1;
+  order: 3;
+  background: var(--box-light);
+  border: 1px solid var(--border-light);
+  border-top: none;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  max-height: 400px;
+  overflow-y: auto;
+  display: none;
+  animation: slideDown 0.2s ease-out;
+  margin-top: -1px;
+  width: 100%;
+}
+
+body.dark-mode .autocomplete-dropdown {
+  background: var(--box-dark);
+  border-color: var(--border-dark);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 400px;
+  }
+}
+
+.autocomplete-item {
+  padding: var(--spacing-md);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+body.dark-mode .autocomplete-item {
+  border-bottom-color: var(--border-dark);
+}
+
+.autocomplete-item:last-child {
+  border-bottom: none;
+}
+
+.autocomplete-item:hover,
+.autocomplete-item.selected {
+  background-color: rgba(0, 123, 255, 0.08);
+}
+
+body.dark-mode .autocomplete-item:hover,
+body.dark-mode .autocomplete-item.selected {
+  background-color: rgba(0, 123, 255, 0.25);
+}
+
+.autocomplete-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.autocomplete-main strong {
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.autocomplete-main strong mark {
+  background-color: rgba(255, 193, 7, 0.4);
+  padding: 0 2px;
+  border-radius: 2px;
+  font-weight: 700;
+}
+
+body.dark-mode .autocomplete-main strong mark {
+  background-color: rgba(255, 193, 7, 0.5);
+}
+
+.autocomplete-secondary {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+body.dark-mode .autocomplete-secondary {
+  color: rgba(241, 242, 246, 0.6);
+}
+
+.autocomplete-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.autocomplete-loading,
+.autocomplete-no-results {
+  padding: var(--spacing-lg);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+body.dark-mode .autocomplete-loading,
+body.dark-mode .autocomplete-no-results {
+  color: rgba(241, 242, 246, 0.6);
+}
+
+.autocomplete-dropdown::-webkit-scrollbar {
+  width: 8px;
+}
+
+.autocomplete-dropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.autocomplete-dropdown::-webkit-scrollbar-thumb {
+  background: rgba(0, 123, 255, 0.3);
+  border-radius: 4px;
+}
+
+.autocomplete-dropdown::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 123, 255, 0.5);
+}
+
+body.dark-mode .autocomplete-dropdown::-webkit-scrollbar-thumb {
+  background: rgba(100, 181, 246, 0.4);
+}
+
+body.dark-mode .autocomplete-dropdown::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 181, 246, 0.6);
 }
 
 /* Recent Cities */
