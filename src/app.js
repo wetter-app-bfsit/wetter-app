@@ -55,14 +55,6 @@ class AppState {
           "wetter_favorites",
           JSON.stringify(this.favorites)
         );
-        // Log analytics
-        if (window.logAnalyticsEvent) {
-          window.logAnalyticsEvent("favorite_action", {
-            action: "add",
-            city,
-            timestamp: Date.now(),
-          });
-        }
       } catch (e) {
         console.warn("Fehler beim Speichern von Favoriten:", e);
       }
@@ -306,6 +298,470 @@ function setupMobileViewportWatcher() {
     mediaQuery.addEventListener("change", applyState);
   } else if (typeof mediaQuery.addListener === "function") {
     mediaQuery.addListener(applyState);
+  }
+}
+
+async function initAppShell(appState) {
+  try {
+    setupMobileViewportWatcher();
+  } catch (e) {
+    console.warn("Viewport Watcher konnte nicht initialisiert werden", e);
+  }
+
+  if (window.AppBar && window.AppBar.initAppBar) {
+    try {
+      window.AppBar.initAppBar();
+    } catch (e) {
+      console.warn("AppBar Initialisierung fehlgeschlagen", e);
+    }
+  }
+
+  if (window.BottomNav && window.BottomNav.initBottomNav) {
+    try {
+      window.BottomNav.initBottomNav();
+    } catch (e) {
+      console.warn("BottomNav Initialisierung fehlgeschlagen", e);
+    }
+  }
+
+  if (window.ModalController && window.ModalController.initModalController) {
+    try {
+      window.ModalController.initModalController();
+    } catch (e) {
+      console.warn("ModalController Initialisierung fehlgeschlagen", e);
+    }
+  }
+
+  if (window.SettingsHome && window.SettingsHome.renderSettingsHome) {
+    try {
+      window.SettingsHome.renderSettingsHome(appState);
+    } catch (e) {
+      console.warn("SettingsHome Initialisierung fehlgeschlagen", e);
+    }
+  }
+
+  if (window.ThemeSelectorSheet && window.ThemeSelectorSheet.renderThemeSheet) {
+    try {
+      window.ThemeSelectorSheet.renderThemeSheet(appState);
+    } catch (e) {
+      console.warn("ThemeSelectorSheet Initialisierung fehlgeschlagen", e);
+    }
+  }
+
+  if (window.UnitsSelectorSheet && window.UnitsSelectorSheet.renderUnitsSheet) {
+    try {
+      window.UnitsSelectorSheet.renderUnitsSheet(appState);
+    } catch (e) {
+      console.warn("UnitsSelectorSheet Initialisierung fehlgeschlagen", e);
+    }
+  }
+
+  if (
+    window.LanguageSelectorSheet &&
+    window.LanguageSelectorSheet.renderLanguageSheet
+  ) {
+    try {
+      window.LanguageSelectorSheet.renderLanguageSheet(appState);
+    } catch (e) {
+      console.warn("LanguageSelectorSheet Initialisierung fehlgeschlagen", e);
+    }
+  }
+
+  if (window.HomeLocationSheet && window.HomeLocationSheet.renderHomeSheet) {
+    try {
+      window.HomeLocationSheet.renderHomeSheet(appState);
+    } catch (e) {
+      console.warn("HomeLocationSheet Initialisierung fehlgeschlagen", e);
+    }
+  }
+
+  if (window.AboutSheet && window.AboutSheet.renderAboutSheet) {
+    try {
+      window.AboutSheet.renderAboutSheet(appState);
+    } catch (e) {
+      console.warn("AboutSheet Initialisierung fehlgeschlagen", e);
+    }
+  }
+
+  if (
+    window.PrivacyApiInfoSheet &&
+    window.PrivacyApiInfoSheet.renderPrivacySheet
+  ) {
+    try {
+      window.PrivacyApiInfoSheet.renderPrivacySheet();
+    } catch (e) {
+      console.warn("PrivacyApiInfoSheet Initialisierung fehlgeschlagen", e);
+    }
+  }
+
+  // Map-Layer-Auswahl: LayerBottomSheet-Interaktion
+  try {
+    const layerSheet = document.getElementById("sheet-map-layers");
+    const layerButtons =
+      layerSheet?.querySelectorAll(".map-layer-chip[data-layer-id]") || [];
+
+    if (layerButtons.length && window.ModalController) {
+      layerButtons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const layerId = btn.getAttribute("data-layer-id");
+          const group = btn.getAttribute("data-layer-group") || "";
+
+          // Analytics-Hook
+          if (window.logAnalyticsEvent) {
+            window.logAnalyticsEvent("map_layer_selected", {
+              layerId,
+              group,
+              timestamp: Date.now(),
+            });
+          }
+
+          // Hook: hier könnte ein Radar/Layer-Manager aktiviert werden
+          if (window.MapLayerManager && window.MapLayerManager.setActiveLayer) {
+            try {
+              window.MapLayerManager.setActiveLayer(layerId);
+            } catch (err) {
+              console.warn("Fehler beim Aktivieren des Map-Layers", err);
+            }
+          }
+
+          // Sheet nach Auswahl schließen
+          try {
+            if (window.ModalController && window.ModalController.closeAll) {
+              window.ModalController.closeAll();
+            }
+          } catch (err) {
+            console.warn("Fehler beim Schließen des Layer-Sheets", err);
+          }
+        });
+      });
+    }
+  } catch (e) {
+    console.warn("LayerBottomSheet Initialisierung fehlgeschlagen", e);
+  }
+
+  // Radar / Kartenansicht vorbereiten (MapContainer + Layers + Timeline-Stub)
+  try {
+    if (window.MapContainer && typeof window.MapContainer.init === "function") {
+      const center =
+        appState && appState.currentCoordinates
+          ? [
+              appState.currentCoordinates.lat || 52.52,
+              appState.currentCoordinates.lon || 13.405,
+            ]
+          : [52.52, 13.405];
+
+      window.MapContainer.init({
+        domSelector: "#map-container",
+        center,
+        zoom: 7,
+      });
+    }
+
+    // Optionale MapComponent-Integration (falls vorhanden)
+    if (window.MapComponent) {
+      const map = new window.MapComponent("map-container");
+      map.render();
+
+      // Expose for debugging or späteren Gebrauch
+      window._radarMap = map;
+    }
+
+    if (window.MapLayerManager) {
+      window.MapLayerManager.init(window.MapContainer);
+
+      // Layer-Stubs für Phase 1 registrieren
+      if (window.RadarLayer) {
+        window.MapLayerManager.registerLayer(
+          "radar",
+          new window.RadarLayer({ id: "radar" })
+        );
+      }
+      if (window.SatelliteLayer) {
+        window.MapLayerManager.registerLayer(
+          "satellite",
+          new window.SatelliteLayer({ id: "satellite" })
+        );
+      }
+      if (window.TemperatureLayer) {
+        window.MapLayerManager.registerLayer(
+          "temperature",
+          new window.TemperatureLayer({ id: "temperature" })
+        );
+      }
+      if (window.WindLayer) {
+        window.MapLayerManager.registerLayer(
+          "wind",
+          new window.WindLayer({ id: "wind" })
+        );
+      }
+    }
+
+    if (
+      window.RadarController &&
+      typeof window.RadarController.init === "function"
+    ) {
+      window.RadarController.init(window.MapLayerManager);
+      if (typeof window.RadarController.generateFrames === "function") {
+        window.RadarController.generateFrames();
+      }
+    }
+
+    // Layer-Liste im Bottom-Sheet aus Registry rendern (Phase 1)
+    const layerListEl = document.getElementById("map-layer-list");
+    if (layerListEl && window.MapLayerManager) {
+      const LABELS = {
+        radar: "Regenradar",
+        satellite: "Satellit",
+        temperature: "Temperatur",
+        wind: "Wind",
+        cloud: "Bewölkung",
+        humidity: "Luftfeuchte",
+        aqi: "Luftqualität",
+        alerts: "Warnungen",
+      };
+
+      const renderLayerList = () => {
+        const order = [
+          "radar",
+          "satellite",
+          "temperature",
+          "cloud",
+          "humidity",
+          "wind",
+          "aqi",
+          "alerts",
+        ];
+        const rawLayers = window.MapLayerManager.getLayerList();
+        const layers = order
+          .map((id) => rawLayers.find((l) => l.id === id))
+          .filter(Boolean);
+        layerListEl.innerHTML = "";
+        layers.forEach((entry) => {
+          const row = document.createElement("button");
+          row.type = "button";
+          row.className = "map-layer-row";
+          row.dataset.layerId = entry.id;
+          row.setAttribute("aria-pressed", entry.visible ? "true" : "false");
+
+          const label = document.createElement("span");
+          label.className = "map-layer-row__label";
+          label.textContent = LABELS[entry.id] || entry.id;
+
+          const state = document.createElement("span");
+          state.className = "map-layer-row__state";
+          state.textContent = entry.visible ? "Aktiv" : "Aus";
+
+          row.appendChild(label);
+          row.appendChild(state);
+
+          row.addEventListener("click", () => {
+            window.MapLayerManager.toggleLayer(entry.id);
+            renderLayerList();
+          });
+
+          layerListEl.appendChild(row);
+        });
+      };
+
+      renderLayerList();
+    }
+
+    // Einfache Timeline-Interaktion für Phase 1 (ohne echte Frames)
+    const playBtn = document.getElementById("map-timeline-play");
+    const prevBtn = document.getElementById("map-timeline-prev");
+    const nextBtn = document.getElementById("map-timeline-next");
+
+    if (playBtn && window.RadarController) {
+      let isPlaying = false;
+      playBtn.addEventListener("click", () => {
+        if (!isPlaying) {
+          window.RadarController.play();
+          playBtn.textContent = "⏸";
+        } else {
+          window.RadarController.pause();
+          playBtn.textContent = "▶";
+        }
+        isPlaying = !isPlaying;
+      });
+    }
+
+    if (prevBtn && window.RadarController) {
+      prevBtn.addEventListener("click", () => window.RadarController.step(-1));
+    }
+    if (nextBtn && window.RadarController) {
+      nextBtn.addEventListener("click", () => window.RadarController.step(1));
+    }
+  } catch (e) {
+    console.warn("Radar / Karten-Initialisierung fehlgeschlagen", e);
+  }
+
+  // History View – letzte 30 Tage laden und rendern (über WeatherDataService)
+  try {
+    const { weatherDataService } = await import("./api/WeatherDataService.js");
+    const { default: HistoryView } = await import(
+      "./ui/history/HistoryView.js"
+    );
+
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const lat =
+      appState?.currentCoordinates?.lat ??
+      appState?.renderData?.location?.latitude ??
+      52.52;
+    const lon =
+      appState?.currentCoordinates?.lon ??
+      appState?.renderData?.location?.longitude ??
+      13.405;
+
+    const startDate = thirtyDaysAgo.toISOString().split("T")[0];
+    const endDate = today.toISOString().split("T")[0];
+
+    const historyData = await weatherDataService.loadHistory(
+      lat,
+      lon,
+      startDate,
+      endDate
+    );
+
+    if (appState) {
+      appState.history = historyData;
+    }
+
+    const historyView = new HistoryView({ containerId: "history-container" });
+    await historyView.render(historyData);
+    window.HISTORY_VIEW = historyView;
+  } catch (e) {
+    console.warn("History View konnte nicht initialisiert werden", e);
+  }
+
+  // Detail-Sheets initialisieren, wenn vorhanden
+  try {
+    if (
+      window.PrecipitationDetailSheet &&
+      window.PrecipitationDetailSheet.renderPrecipitationDetailSheet
+    ) {
+      window.PrecipitationDetailSheet.renderPrecipitationDetailSheet(appState);
+    }
+    if (
+      window.WindDetailSheet &&
+      window.WindDetailSheet.renderWindDetailSheet
+    ) {
+      window.WindDetailSheet.renderWindDetailSheet(appState);
+    }
+    if (window.UVDetailSheet && window.UVDetailSheet.renderUVDetailSheet) {
+      window.UVDetailSheet.renderUVDetailSheet(appState);
+    }
+    if (window.AQIDetailSheet && window.AQIDetailSheet.renderAQIDetailSheet) {
+      window.AQIDetailSheet.renderAQIDetailSheet(appState);
+    }
+    if (
+      window.VisibilityDetailSheet &&
+      window.VisibilityDetailSheet.renderVisibilityDetailSheet
+    ) {
+      window.VisibilityDetailSheet.renderVisibilityDetailSheet(appState);
+    }
+  } catch (e) {
+    console.warn("Detail-Sheets konnten nicht initialisiert werden", e);
+  }
+
+  // Falls bereits Renderdaten vorhanden sind, initiales Home-Rendering auslösen
+  if (appState && appState.renderData && window.WeatherHero) {
+    try {
+      const units = appState.units || { temperature: "C", wind: "km/h" };
+      const homeState = {
+        current:
+          appState.renderData?.currentSnapshot ||
+          appState.renderData?.current ||
+          {},
+        daily: appState.renderData?.openMeteo?.daily || [],
+        hourly:
+          appState.renderData?.hourly ||
+          buildHourlyDisplayPayload(appState.renderData, 24).hours ||
+          [],
+        location: appState.location || {},
+        temperatureUnit: units.temperature || "C",
+        windUnit: units.wind || "km/h",
+        locale: appState.locale || "de-DE",
+        lastUpdated: Date.now(),
+      };
+
+      const healthState =
+        typeof window.healthSafetyEngine === "function"
+          ? window.healthSafetyEngine(homeState)
+          : {};
+
+      if (window.WeatherHero && window.WeatherHero.renderWeatherHero) {
+        window.WeatherHero.renderWeatherHero(homeState, {
+          iconForCode: (code, isDay) => {
+            try {
+              if (window.weatherIconMapper?.toHtml) {
+                return window.weatherIconMapper.toHtml(code, isDay);
+              }
+              if (window.iconMapper?.toHtml) {
+                return window.iconMapper.toHtml(code, isDay);
+              }
+            } catch (e) {
+              return "";
+            }
+            return "";
+          },
+          formatUpdatedAt: (ts) => {
+            if (!ts) return "";
+            try {
+              return new Date(ts).toLocaleTimeString(homeState.locale, {
+                hour: "2-digit",
+                minute: "2-digit",
+              });
+            } catch {
+              return "";
+            }
+          },
+        });
+      }
+
+      if (window.HomeCards && window.HomeCards.renderHomeCards) {
+        window.HomeCards.renderHomeCards(homeState, healthState);
+      }
+
+      if (window.HealthSafetyView && window.HealthSafetyView.render) {
+        try {
+          window.HealthSafetyView.render(homeState, healthState);
+        } catch (e) {
+          console.warn("HealthSafetyView Rendering fehlgeschlagen", e);
+        }
+      }
+
+      // Detail-Sheets initial mit Daten befüllen
+      try {
+        if (window.PrecipitationDetailSheet) {
+          window.PrecipitationDetailSheet.renderPrecipitationDetailSheet(
+            homeState
+          );
+        }
+        if (window.WindDetailSheet) {
+          window.WindDetailSheet.renderWindDetailSheet(homeState);
+        }
+        if (window.UVDetailSheet) {
+          window.UVDetailSheet.renderUVDetailSheet(homeState);
+        }
+        if (window.AQIDetailSheet) {
+          window.AQIDetailSheet.renderAQIDetailSheet(homeState);
+        }
+        if (window.TemperatureTrendDetailSheet) {
+          window.TemperatureTrendDetailSheet.renderTemperatureTrendDetailSheet(
+            homeState
+          );
+        }
+        if (window.SunCloudDetailSheet) {
+          window.SunCloudDetailSheet.renderSunCloudDetailSheet(homeState);
+        }
+      } catch (e) {
+        console.warn("Detail-Sheets Rendering fehlgeschlagen", e);
+      }
+    } catch (e) {
+      console.warn("Initiales Home-Rendering im App-Shell fehlgeschlagen", e);
+    }
   }
 }
 
@@ -2427,6 +2883,71 @@ async function loadWeather(city, options = {}) {
       // Fallback: falls renderData fehlt, zeige rohe Daten
       weatherDisplay.displayCurrent(weatherData, location.city);
     }
+
+    // Neues Home-Layout (Hero + Karten) befüllen
+    try {
+      const units = appState.units || { temperature: "C", wind: "km/h" };
+      const homeState = {
+        current:
+          appState.renderData?.currentSnapshot ||
+          appState.renderData?.current ||
+          {},
+        daily: appState.renderData?.openMeteo?.daily || [],
+        hourly:
+          appState.renderData?.hourly ||
+          buildHourlyDisplayPayload(appState.renderData, 24).hours ||
+          [],
+        location: {
+          name: location.city,
+          country: weatherData?.locationDetails?.countryCode,
+        },
+        temperatureUnit: units.temperature || "C",
+        windUnit: units.wind || "km/h",
+        locale: appState.locale || "de-DE",
+        lastUpdated: Date.now(),
+      };
+
+      const healthState =
+        typeof window.healthSafetyEngine === "function"
+          ? window.healthSafetyEngine(homeState)
+          : {};
+
+      if (window.WeatherHero && window.WeatherHero.renderWeatherHero) {
+        window.WeatherHero.renderWeatherHero(homeState, {
+          iconForCode: (code, isDay) => {
+            try {
+              if (window.weatherIconMapper?.toHtml) {
+                return window.weatherIconMapper.toHtml(code, isDay);
+              }
+              if (window.iconMapper?.toHtml) {
+                return window.iconMapper.toHtml(code, isDay);
+              }
+            } catch (e) {
+              return "";
+            }
+            return "";
+          },
+          formatUpdatedAt: (ts) => {
+            if (!ts) return "";
+            try {
+              return new Date(ts).toLocaleTimeString(homeState.locale, {
+                hour: "2-digit",
+                minute: "2-digit",
+              });
+            } catch {
+              return "";
+            }
+          },
+        });
+      }
+
+      if (window.HomeCards && window.HomeCards.renderHomeCards) {
+        window.HomeCards.renderHomeCards(homeState, healthState);
+      }
+    } catch (e) {
+      console.warn("Neues Home-Layout Rendering fehlgeschlagen", e);
+    }
+
     displayWeatherResults(location, weatherData);
     updateTopbarStatus(location.city);
     const favToggle = document.getElementById("favoriteToggle");
@@ -3271,23 +3792,30 @@ function initApp() {
     }
   })();
 
-  // Test: Zeige empty state
-  weatherDisplay.showEmpty();
+  // Home-Bereich: Immer sinnvolle Demo-Daten anzeigen, falls keine
+  // gespeicherten Live-Daten vorhanden sind. So bleibt die App auch bei
+  // 401/503/Offline sofort bedienbar.
   const restoredSnapshot = tryRestoreLastSnapshot();
   if (restoredSnapshot) {
     showInfo("📦 Zeige letzten gespeicherten Wetterstand – aktualisiere...");
   } else {
     const offline =
       typeof navigator !== "undefined" && navigator.onLine === false;
-    renderDemoExperience(
-      offline
-        ? "📺 Offline erkannt – Demo-Daten werden angezeigt."
-        : "👋 Demo-Vorschau aktiv – starte eine Suche für Live-Wetter."
-    );
+    const reason = offline
+      ? "📺 Offline erkannt – Demo-Daten werden angezeigt."
+      : "👋 Demo-Vorschau aktiv – starte eine Suche für Live-Wetter.";
+    renderDemoExperience(reason);
   }
 
   // Expose a simple smoke-test callable from console
   window.runSmokeTest = runSmokeTest;
+
+  // App-Shell / Navigation initialisieren (neue mobile UI)
+  try {
+    initAppShell(appState);
+  } catch (e) {
+    console.warn("App-Shell konnte nicht initialisiert werden", e);
+  }
 
   console.log("✅ App initialisiert");
 }
@@ -3670,15 +4198,12 @@ function setPushToggleBusy(isBusy) {
   }
 }
 
-function openSettingsModal(focusFieldId) {
-  const modal = document.getElementById("settings-modal");
-  const modalOverlay = document.getElementById("modal-overlay");
-  if (!modal) return;
-  modal.classList.add("active");
-  modal.setAttribute("aria-hidden", "false");
-  modalOverlay?.classList.add("active");
-  document.body.style.overflow = "hidden";
+// Legacy Settings-Modal entfernt – zentrale Settings laufen über die
+// mobile App-View (BottomNav → data-view="settings" + Bottom-Sheets).
+// Die folgenden Funktionen bleiben als No-Op bestehen, damit ältere
+// Aufrufe nichts kaputt machen.
 
+function openSettingsModal(focusFieldId) {
   if (focusFieldId) {
     focusAndHighlight(focusFieldId, 250);
   }
@@ -3686,26 +4211,12 @@ function openSettingsModal(focusFieldId) {
 
 function closeModal(modalId) {
   if (!modalId) return;
-  const modal = document.getElementById(modalId);
-  const modalOverlay = document.getElementById("modal-overlay");
-  if (!modal) return;
-  modal.classList.remove("active");
-  modal.setAttribute("aria-hidden", "true");
-  modalOverlay?.classList.remove("active");
-  document.body.style.overflow = "";
   if (modalId === "settings-modal") {
     closeSettingsSubview();
   }
 }
 
 function closeAllModals() {
-  document.querySelectorAll(".modal.active").forEach((modal) => {
-    modal.classList.remove("active");
-    modal.setAttribute("aria-hidden", "true");
-  });
-  const modalOverlay = document.getElementById("modal-overlay");
-  modalOverlay?.classList.remove("active");
-  document.body.style.overflow = "";
   closeSettingsSubview();
 }
 

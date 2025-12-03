@@ -3018,7 +3018,9 @@ if (typeof module !== "undefined" && module.exports) {
   };
 }
 document.addEventListener("selectstart", function (e) {
-  if (e.target.closest(".weather-box")) {
+  const target = e.target;
+  if (!(target instanceof Element)) return;
+  if (target.closest(".weather-box")) {
     // Prüft, ob das ausgewählte Element innerhalb deines Kastens liegt
     e.preventDefault();
   }

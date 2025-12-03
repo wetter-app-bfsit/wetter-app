@@ -36,28 +36,93 @@
   },
   "settings": {
     "title": "⚙️ Einstellungen",
-    "units": "Einheiten",
-    "temperature": "🌡️ Temperatureinheit",
-    "windSpeed": "💨 Windgeschwindigkeit",
-    "tempCelsius": "Celsius (°C)",
-    "tempFahrenheit": "Fahrenheit (°F)",
-    "windKmh": "Kilometer pro Stunde (km/h)",
-    "windMs": "Meter pro Sekunde (m/s)",
-    "windMph": "Meilen pro Stunde (mph)",
-    "cache": "💾 Cache-Einstellungen",
-    "cacheEnabled": "Caching aktivieren",
-    "clearCache": "🧹 Cache leeren",
-    "clearRecent": "🗑️ Verlauf löschen",
-    "pushNotifications": "🔔 Push-Benachrichtigungen",
-    "fetchVapid": "Fetch VAPID",
-    "saveVapid": "Speichern",
-    "subscribe": "Abonnieren",
-    "subscribed": "Abonniert",
-    "apiKeys": "🔑 Optionale API Keys",
-    "language": "🌐 Sprache",
-    "apiStatus": "📊 API Status",
-    "darkMode": "🌙 Dunkelmodus",
-    "about": "ℹ️ Über"
+    "group": {
+      "appearance": "Aussehen",
+      "home": "Heimatort",
+      "units": "Einheiten",
+      "background": "Hintergrundaktualisierungen",
+      "models": "Wettermodelle",
+      "language": "Sprache",
+      "export": "Daten exportieren",
+      "import": "Daten importieren",
+      "community": "Community",
+      "about": "Über Calchas"
+    },
+    "subtitle": {
+      "appearance": "Themen, Animationen und App-Layout",
+      "home": "Heimatort und Favoriten verwalten",
+      "units": "Temperatur, Wind, Luftdruck, Sichtweite, Niederschlag und AQI",
+      "background": "Update-Intervall und Hintergrund-Updates",
+      "models": "Open-Meteo und weitere Wettermodelle",
+      "language": "App-Sprache und Datumsformate",
+      "export": "Einstellungen und Daten sichern",
+      "import": "Gesicherte Daten wiederherstellen",
+      "community": "Tritt unserer Community bei",
+      "about": "Version, Lizenzen und Datenschutzhinweise"
+    },
+    "languageLabel": "Sprache",
+    "languageValueDe": "Deutsch",
+    "languageValueEn": "Englisch",
+    "home": {
+      "title": "Heimatort",
+      "noHome": "Kein Heimatort gesetzt.",
+      "clear": "Heimatort entfernen",
+      "favoritesTitle": "Favoriten",
+      "noFavorites": "Keine Favoriten gespeichert.",
+      "setFromFavorite": "Als Heimatort setzen"
+    },
+    "units": {
+      "tempTitle": "Temperatur",
+      "windTitle": "Wind",
+      "pressureTitle": "Luftdruck",
+      "precipTitle": "Niederschlag",
+      "aqiTitle": "Luftqualität",
+      "pressure_hPa": "hPa",
+      "pressure_mmHg": "mmHg",
+      "pressure_inHg": "inHg",
+      "precip_mm": "mm",
+      "precip_in": "in",
+      "aqi_eu": "EU-AQI",
+      "aqi_us": "US-AQI"
+    },
+    "privacy": {
+      "title": "Datenschutz & APIs",
+      "storedDataTitle": "Gespeicherte Daten",
+      "storedDataIntro": "Calchas speichert nur die Daten, die für eine komfortable Nutzung notwendig sind.",
+      "storedFavorites": "⭐ Favoriten (Ortsname und Koordinaten)",
+      "storedSettings": "⚙️ App-Einstellungen (Theme, Sprache, Einheiten, Heimatort)",
+      "storedCache": "🗂️ Zwischenspeicher für Wetterdaten (kurzzeitig)",
+      "apisTitle": "Verwendete APIs",
+      "apisIntro": "Für die Wetter- und Kartendaten werden u.a. folgende Dienste genutzt:",
+      "privacyLink": "Datenschutz",
+      "termsLink": "Nutzungsbedingungen"
+    },
+    "background": {
+      "title": "Hintergrundaktualisierungen",
+      "off": "Aus",
+      "15min": "Alle 15 Minuten",
+      "30min": "Alle 30 Minuten",
+      "60min": "Stündlich"
+    },
+    "models": {
+      "title": "Wettermodelle",
+      "intro": "Open-Meteo und BrightSky sind die Hauptquellen. Optional können weitere Modelle ergänzt werden.",
+      "primary": "Primäre Modelle",
+      "secondary": "Optionale Modelle"
+    },
+    "exportImport": {
+      "exportTitle": "Daten exportieren",
+      "exportDescription": "Exportiere Favoriten und Einstellungen als JSON-Datei.",
+      "exportButton": "Export starten",
+      "importTitle": "Daten importieren",
+      "importDescription": "Importiere zuvor exportierte JSON-Daten.",
+      "importButton": "Datei auswählen"
+    },
+    "community": {
+      "title": "Community",
+      "intro": "Calchas ist ein Lernprojekt. Teile Feedback oder Ideen gerne über GitHub oder im Unterricht.",
+      "github": "Projekt auf GitHub öffnen"
+    }
   },
   "buttons": {
     "search": "Suchen",

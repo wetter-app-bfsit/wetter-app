@@ -16,6 +16,7 @@
     "predeploy": "npm test && npm run lint"
   },
   "dependencies": {
+    "@rive-app/canvas": "^2.32.2",
     "body-parser": "^1.20.2",
     "express": "^4.18.2",
     "web-push": "^3.6.7"

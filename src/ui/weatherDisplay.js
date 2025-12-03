@@ -179,6 +179,7 @@ class WeatherDisplayComponent {
         fallbackEmoji: currentHour.emoji,
         fallbackLabel: description,
       });
+      const frogStage = this._renderFrogStage(description);
 
       const precipitationLabel =
         typeof precipitationSum === "number"
@@ -212,6 +213,7 @@ class WeatherDisplayComponent {
             <div class="hero-icon" id="current-emoji">${heroIcon}</div>
           </div>
         </div>
+        ${frogStage}
         ${heroBadgesHtml}
         <div class="weather-details hero-details">
           <div class="detail-item">
@@ -546,6 +548,42 @@ class WeatherDisplayComponent {
         second: "2-digit",
       });
     }
+  }
+
+  _renderFrogStage(conditionText) {
+    const message = conditionText
+      ? `Wetterfrosch meint: ${this._escapeHtml(conditionText)}.`
+      : "Wetterfrosch wartet auf frische Daten.";
+    const stars = Array.from({ length: 5 })
+      .map((_, idx) => `<span class="frog-star" data-star="${idx + 1}"></span>`)
+      .join("");
+    return `
+      <section class="frog-stage" aria-hidden="true">
+        <div class="frog-pond">
+          <div class="frog-stars">${stars}</div>
+          <div class="frog-sway" role="presentation">
+            <span class="frog-rope left"></span>
+            <span class="frog-rope right"></span>
+            <div class="frog-seat"></div>
+            <div class="frog-body">
+              <span class="frog-eye left"><span class="frog-pupil"></span></span>
+              <span class="frog-eye right"><span class="frog-pupil"></span></span>
+              <span class="frog-mouth"></span>
+              <span class="frog-cheek left"></span>
+              <span class="frog-cheek right"></span>
+              <span class="frog-hand left"></span>
+              <span class="frog-hand right"></span>
+              <span class="frog-feet"></span>
+            </div>
+          </div>
+          <div class="frog-ground">
+            <span class="frog-bush left"></span>
+            <span class="frog-bush right"></span>
+          </div>
+        </div>
+        <p class="frog-caption">${message}</p>
+      </section>
+    `;
   }
 
   /**

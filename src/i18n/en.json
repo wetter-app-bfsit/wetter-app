@@ -36,28 +36,93 @@
   },
   "settings": {
     "title": "⚙️ Settings",
-    "units": "Units",
-    "temperature": "🌡️ Temperature Unit",
-    "windSpeed": "💨 Wind Speed",
-    "tempCelsius": "Celsius (°C)",
-    "tempFahrenheit": "Fahrenheit (°F)",
-    "windKmh": "Kilometers per Hour (km/h)",
-    "windMs": "Meters per Second (m/s)",
-    "windMph": "Miles per Hour (mph)",
-    "cache": "💾 Cache Settings",
-    "cacheEnabled": "Enable Caching",
-    "clearCache": "🧹 Clear Cache",
-    "clearRecent": "🗑️ Clear History",
-    "pushNotifications": "🔔 Push Notifications",
-    "fetchVapid": "Fetch VAPID",
-    "saveVapid": "Save",
-    "subscribe": "Subscribe",
-    "subscribed": "Subscribed",
-    "apiKeys": "🔑 Optional API Keys",
-    "language": "🌐 Language",
-    "apiStatus": "📊 API Status",
-    "darkMode": "🌙 Dark Mode",
-    "about": "ℹ️ About"
+    "group": {
+      "appearance": "Appearance",
+      "home": "Home location",
+      "units": "Units",
+      "background": "Background updates",
+      "models": "Weather models",
+      "language": "Language",
+      "export": "Export data",
+      "import": "Import data",
+      "community": "Community",
+      "about": "About Calchas"
+    },
+    "subtitle": {
+      "appearance": "Themes, animations and app layout",
+      "home": "Manage home location and favorites",
+      "units": "Temperature, wind, pressure, visibility, precipitation and AQI",
+      "background": "Update interval and background refresh",
+      "models": "Open-Meteo and other weather models",
+      "language": "App language and date formats",
+      "export": "Backup settings and data",
+      "import": "Restore previously saved data",
+      "community": "Join our community",
+      "about": "Version, licenses and privacy notes"
+    },
+    "languageLabel": "Language",
+    "languageValueDe": "German",
+    "languageValueEn": "English",
+    "home": {
+      "title": "Home location",
+      "noHome": "No home location set.",
+      "clear": "Remove home location",
+      "favoritesTitle": "Favorites",
+      "noFavorites": "No favorites saved.",
+      "setFromFavorite": "Set as home location"
+    },
+    "units": {
+      "tempTitle": "Temperature",
+      "windTitle": "Wind",
+      "pressureTitle": "Pressure",
+      "precipTitle": "Precipitation",
+      "aqiTitle": "Air quality",
+      "pressure_hPa": "hPa",
+      "pressure_mmHg": "mmHg",
+      "pressure_inHg": "inHg",
+      "precip_mm": "mm",
+      "precip_in": "in",
+      "aqi_eu": "EU AQI",
+      "aqi_us": "US AQI"
+    },
+    "privacy": {
+      "title": "Privacy & APIs",
+      "storedDataTitle": "Stored data",
+      "storedDataIntro": "Calchas only stores data that is necessary for a comfortable experience.",
+      "storedFavorites": "⭐ Favorites (location name and coordinates)",
+      "storedSettings": "⚙️ App settings (theme, language, units, home location)",
+      "storedCache": "🗂️ Temporary cache for weather data",
+      "apisTitle": "Used APIs",
+      "apisIntro": "For weather and map data the following services are used, among others:",
+      "privacyLink": "Privacy policy",
+      "termsLink": "Terms of use"
+    },
+    "background": {
+      "title": "Background updates",
+      "off": "Off",
+      "15min": "Every 15 minutes",
+      "30min": "Every 30 minutes",
+      "60min": "Hourly"
+    },
+    "models": {
+      "title": "Weather models",
+      "intro": "Open-Meteo and BrightSky are the primary sources. Optional models can be added.",
+      "primary": "Primary models",
+      "secondary": "Optional models"
+    },
+    "exportImport": {
+      "exportTitle": "Export data",
+      "exportDescription": "Export favorites and settings as a JSON file.",
+      "exportButton": "Start export",
+      "importTitle": "Import data",
+      "importDescription": "Import previously exported JSON data.",
+      "importButton": "Choose file"
+    },
+    "community": {
+      "title": "Community",
+      "intro": "Calchas is a learning project. Share feedback or ideas via GitHub or in class.",
+      "github": "Open project on GitHub"
+    }
   },
   "buttons": {
     "search": "Search",

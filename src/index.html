@@ -19,13 +19,536 @@
       href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%23007BFF' width='180' height='180' rx='40'/><text x='90' y='130' font-size='140' text-anchor='middle'>🌦️</text></svg>"
     />
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0,0"
+    />
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="day-detail.css" />
     <link rel="stylesheet" href="mobile.css" media="(max-width: 768px)" />
     <title>Calchas - Aktuelle Wetterdaten</title>
   </head>
-  <body>
-    <div class="app-shell">
+  <body class="mobile-app">
+    <div id="app-shell" class="app-shell app-shell">
+      <header id="app-bar" class="app-bar">
+        <div class="app-bar__location">
+          <span class="app-bar__location-icon material-symbols-outlined" aria-hidden="true">location_on</span>
+          <span id="app-bar-location" class="app-bar__location-text">Noch kein Ort</span>
+        </div>
+        <button id="app-bar-settings" class="icon-button" aria-label="Einstellungen öffnen">
+          <span class="material-symbols-outlined" aria-hidden="true">settings</span>
+        </button>
+      </header>
+
+      <main class="app-main-views" aria-label="Wetteransichten">
+        <section data-view="home" aria-label="Heute">
+          <section id="weather-hero" class="weather-hero" aria-live="polite">
+            <!-- wird durch WeatherHero.js befüllt -->
+          </section>
+
+          <section class="card-group" aria-label="Einsichten und Tagesübersicht">
+            <div id="insights-card" class="card card--primary"></div>
+            <div id="day-summary-card" class="card"></div>
+          </section>
+
+          <section class="card-group" aria-label="Vorhersagen">
+            <div id="hourly-forecast-card" class="card"></div>
+            <div id="daily-forecast-card" class="card"></div>
+          </section>
+
+          <section class="card-group" aria-label="Gesundheit und Sicherheit Vorschau">
+            <div id="health-preview-card" class="card"></div>
+          </section>
+
+          <section class="card-group" aria-label="Metriken heute">
+            <div id="metrics-grid" class="metric-grid" aria-label="Wettermetriken heute"></div>
+          </section>
+        </section>
+
+        <section data-view="health" hidden aria-label="Gesundheit und Sicherheit Vollansicht"></section>
+
+        <section data-view="radar" hidden aria-label="Kartenansicht">
+          <div class="map-view">
+            <div class="map-view__header">
+              <div class="map-view__title-group">
+                <h2 class="map-view__title">Karten & Radar</h2>
+                <p class="map-view__subtitle">Niederschlag, Wolken und Wind in deiner Umgebung.</p>
+              </div>
+              <button
+                id="map-layer-toggle"
+                class="chip-button"
+                type="button"
+                data-bottom-sheet-target="sheet-map-layers"
+              >
+                🌈 Layer
+              </button>
+            </div>
+
+            <div id="map-container" class="map-container" aria-label="Wetterkarte"></div>
+
+            <div class="map-legend-strip" aria-label="Legende der Kartendaten">
+              <span class="map-legend__item"><span class="map-legend__swatch map-legend__swatch--rain"></span>Regen</span>
+              <span class="map-legend__item"><span class="map-legend__swatch map-legend__swatch--snow"></span>Schnee</span>
+              <span class="map-legend__item"><span class="map-legend__swatch map-legend__swatch--temp"></span>Temperatur</span>
+              <span class="map-legend__item"><span class="map-legend__swatch map-legend__swatch--wind"></span>Wind</span>
+              <span class="map-legend__item"><span class="map-legend__swatch map-legend__swatch--clouds"></span>Wolken</span>
+              <span class="map-legend__item"><span class="map-legend__swatch map-legend__swatch--aqi"></span>AQI</span>
+            </div>
+
+            <div class="map-timeline" aria-label="Zeitverlauf der Karte">
+              <button
+                id="map-timeline-prev"
+                class="icon-button icon-button--ghost"
+                type="button"
+                aria-label="Einen Schritt zurück"
+              >
+                ◀
+              </button>
+              <button
+                id="map-timeline-play"
+                class="icon-button icon-button--primary"
+                type="button"
+                aria-label="Animation abspielen oder pausieren"
+              >
+                ▶
+              </button>
+              <button
+                id="map-timeline-next"
+                class="icon-button icon-button--ghost"
+                type="button"
+                aria-label="Einen Schritt vor"
+              >
+                ▶
+              </button>
+
+              <input
+                id="map-timeline-slider"
+                class="map-timeline__slider"
+                type="range"
+                min="0"
+                max="0"
+                value="0"
+                step="1"
+                aria-label="Zeitschritte der Radar-Frames"
+              />
+              <span id="map-timeline-label" class="map-timeline__label" aria-live="polite">Live</span>
+            </div>
+          </div>
+        </section>
+
+        <section
+          data-view="history"
+          id="history-section"
+          class="app-view"
+          aria-label="Historische Daten"
+          hidden
+        >
+          <div class="app-view__header">
+            <h2>Wetter-Historie</h2>
+          </div>
+          <div class="app-view__content">
+            <div id="history-container"></div>
+          </div>
+        </section>
+
+        <section
+          data-view="settings"
+          id="settings-section"
+          class="app-view"
+          aria-label="Einstellungen"
+          hidden
+        >
+          <div class="app-view__header">
+            <h2>⚙️ Einstellungen</h2>
+          </div>
+          <div class="app-view__content">
+            <div id="settings-home-container"></div>
+          </div>
+        </section>
+      </main>
+
+      <nav id="bottom-nav" class="bottom-nav" aria-label="Hauptnavigation">
+        <button class="bottom-nav__button bottom-nav__button--active" type="button" data-nav-target="home">
+          <span class="bottom-nav__icon material-symbols-outlined" aria-hidden="true">home</span>
+          <span class="bottom-nav__label">Heute</span>
+        </button>
+        <button class="bottom-nav__button" type="button" data-nav-target="radar">
+          <span class="bottom-nav__icon material-symbols-outlined" aria-hidden="true">map</span>
+          <span class="bottom-nav__label">Karten</span>
+        </button>
+        <button class="bottom-nav__button" type="button" data-nav-target="health">
+          <span class="bottom-nav__icon material-symbols-outlined" aria-hidden="true">health_and_safety</span>
+          <span class="bottom-nav__label">Health</span>
+        </button>
+        <button class="bottom-nav__button" type="button" data-nav-target="settings">
+          <span class="bottom-nav__icon material-symbols-outlined" aria-hidden="true">settings</span>
+          <span class="bottom-nav__label">Einstellungen</span>
+        </button>
+      </nav>
+
+      <div class="alert-badge alert-badge--warning" style="display: none;">⚠️ 0 Warnungen aktiv</div>
+
+      <div id="bottom-sheet-overlay" class="bottom-sheet-overlay" hidden aria-hidden="true">
+        <section
+          id="sheet-metric-wind"
+          class="bottom-sheet"
+          aria-label="Winddetails"
+        ></section>
+
+        <section
+          id="sheet-metric-precipitation"
+          class="bottom-sheet"
+          aria-label="Niederschlagsdetails"
+        ></section>
+
+        <section
+          id="sheet-metric-uv"
+          class="bottom-sheet"
+          aria-label="UV-Index Details"
+        ></section>
+
+        <section
+          id="sheet-metric-visibility"
+          class="bottom-sheet"
+          aria-label="Sichtweitendetails"
+        ></section>
+
+        <section
+          id="sheet-map-layers"
+          class="bottom-sheet"
+          aria-label="Kartendaten-Layer-Auswahl"
+        >
+          <header class="bottom-sheet__header">
+            <span class="bottom-sheet__icon">🌈</span>
+            <div>
+              <h2 class="bottom-sheet__title">Layer & Radar</h2>
+              <p class="bottom-sheet__subtitle">Wähle, welche Daten auf der Karte angezeigt werden.</p>
+            </div>
+          </header>
+          <div class="bottom-sheet__body">
+            <div class="map-layer-group">
+              <h3 class="map-layer-group__title">Niederschlag &amp; Radar</h3>
+              <p class="map-layer-group__subtitle">Regen, Schnee und Radar-Animation.</p>
+              <div class="map-layer-list">
+                <button type="button" class="map-layer-chip" data-layer-id="radar" data-layer-group="precip">
+                  <span class="map-layer-chip__icon">📡</span>
+                  <span class="map-layer-chip__text">
+                    <span class="map-layer-chip__title">Radar</span>
+                    <span class="map-layer-chip__subtitle">Aktuelle Radarframes der letzten Stunde.</span>
+                  </span>
+                </button>
+                <button type="button" class="map-layer-chip" data-layer-id="rain" data-layer-group="precip">
+                  <span class="map-layer-chip__icon">🌧️</span>
+                  <span class="map-layer-chip__text">
+                    <span class="map-layer-chip__title">Regen</span>
+                    <span class="map-layer-chip__subtitle">Flächenhafte Regenintensität.</span>
+                  </span>
+                </button>
+                <button type="button" class="map-layer-chip" data-layer-id="snow" data-layer-group="precip">
+                  <span class="map-layer-chip__icon">❄️</span>
+                  <span class="map-layer-chip__text">
+                    <span class="map-layer-chip__title">Schnee</span>
+                    <span class="map-layer-chip__subtitle">Schneefall und Schneeschauer.</span>
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div class="map-layer-group">
+              <h3 class="map-layer-group__title">Temperatur &amp; Wind</h3>
+              <p class="map-layer-group__subtitle">Flächentemperatur und Windfelder.</p>
+              <div class="map-layer-list">
+                <button type="button" class="map-layer-chip" data-layer-id="temp" data-layer-group="temp-wind">
+                  <span class="map-layer-chip__icon">🌡️</span>
+                  <span class="map-layer-chip__text">
+                    <span class="map-layer-chip__title">Temperaturkarte</span>
+                    <span class="map-layer-chip__subtitle">Farbcodierte Lufttemperatur.</span>
+                  </span>
+                </button>
+                <button type="button" class="map-layer-chip" data-layer-id="wind" data-layer-group="temp-wind">
+                  <span class="map-layer-chip__icon">💨</span>
+                  <span class="map-layer-chip__text">
+                    <span class="map-layer-chip__title">Windvektoren</span>
+                    <span class="map-layer-chip__subtitle">Richtung und Stärke des Windes.</span>
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div class="map-layer-group">
+              <h3 class="map-layer-group__title">Wolken &amp; Sicht</h3>
+              <p class="map-layer-group__subtitle">Bewölkung und Sichtweite.</p>
+              <div class="map-layer-list">
+                <button type="button" class="map-layer-chip" data-layer-id="clouds" data-layer-group="clouds-visibility">
+                  <span class="map-layer-chip__icon">☁️</span>
+                  <span class="map-layer-chip__text">
+                    <span class="map-layer-chip__title">Wolken</span>
+                    <span class="map-layer-chip__subtitle">Tiefe und hohe Bewölkung.</span>
+                  </span>
+                </button>
+                <button type="button" class="map-layer-chip" data-layer-id="visibility" data-layer-group="clouds-visibility">
+                  <span class="map-layer-chip__icon">🌁</span>
+                  <span class="map-layer-chip__text">
+                    <span class="map-layer-chip__title">Sichtweite</span>
+                    <span class="map-layer-chip__subtitle">Nebel, Dunst und Einschränkungen.</span>
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div class="map-layer-group">
+              <h3 class="map-layer-group__title">UV &amp; Luftqualität</h3>
+              <p class="map-layer-group__subtitle">Sonneneinstrahlung und Luftbelastung.</p>
+              <div class="map-layer-list">
+                <button type="button" class="map-layer-chip" data-layer-id="uv" data-layer-group="uv-aqi">
+                  <span class="map-layer-chip__icon">☀️</span>
+                  <span class="map-layer-chip__text">
+                    <span class="map-layer-chip__title">UV-Index</span>
+                    <span class="map-layer-chip__subtitle">Tagesmaximalwert und Hotspots.</span>
+                  </span>
+                </button>
+                <button type="button" class="map-layer-chip" data-layer-id="aqi" data-layer-group="uv-aqi">
+                  <span class="map-layer-chip__icon">🌫️</span>
+                  <span class="map-layer-chip__text">
+                    <span class="map-layer-chip__title">Luftqualität</span>
+                    <span class="map-layer-chip__subtitle">EU/US-AQI mit Belastungsstufen.</span>
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section
+          id="sheet-precipitation"
+          class="bottom-sheet"
+          aria-label="Niederschlagsdetails"
+        >
+          <header class="bottom-sheet__header">
+            <span class="bottom-sheet__icon">🌧️</span>
+            <div>
+              <h2 class="bottom-sheet__title">Niederschlag</h2>
+              <p class="bottom-sheet__subtitle">Wahrscheinlichkeit und Intensität der nächsten Stunden.</p>
+            </div>
+          </header>
+          <div class="bottom-sheet__body"></div>
+        </section>
+
+        <section
+          id="sheet-wind"
+          class="bottom-sheet"
+          aria-label="Winddetails"
+        >
+          <header class="bottom-sheet__header">
+            <span class="bottom-sheet__icon">💨</span>
+            <div>
+              <h2 class="bottom-sheet__title">Wind</h2>
+              <p class="bottom-sheet__subtitle">Geschwindigkeit, Böen und Verlauf.</p>
+            </div>
+          </header>
+          <div class="bottom-sheet__body"></div>
+        </section>
+
+        <section
+          id="sheet-uv"
+          class="bottom-sheet"
+          aria-label="UV-Details"
+        >
+          <header class="bottom-sheet__header">
+            <span class="bottom-sheet__icon">☀️</span>
+            <div>
+              <h2 class="bottom-sheet__title">UV-Index</h2>
+              <p class="bottom-sheet__subtitle">Tagesverlauf des UV-Index und Schutzempfehlungen.</p>
+            </div>
+          </header>
+          <div class="bottom-sheet__body"></div>
+        </section>
+
+        <section
+          id="sheet-aqi"
+          class="bottom-sheet"
+          aria-label="Luftqualitätsdetails"
+        >
+          <header class="bottom-sheet__header">
+            <span class="bottom-sheet__icon">🌫️</span>
+            <div>
+              <h2 class="bottom-sheet__title">Luftqualität</h2>
+              <p class="bottom-sheet__subtitle">EU- und US-AQI mit kurzer Einordnung.</p>
+            </div>
+          </header>
+          <div class="bottom-sheet__body"></div>
+        </section>
+
+        <section
+          id="sheet-temperature-trend"
+          class="bottom-sheet"
+          aria-label="Temperaturverlauf"
+        >
+          <header class="bottom-sheet__header">
+            <span class="bottom-sheet__icon">🌡️</span>
+            <div>
+              <h2 class="bottom-sheet__title">Temperaturtrend</h2>
+              <p class="bottom-sheet__subtitle">Kurve von Tages- und Nachttemperaturen.</p>
+            </div>
+          </header>
+          <div class="bottom-sheet__body"></div>
+        </section>
+
+        <section
+          id="sheet-sun-cloud"
+          class="bottom-sheet"
+          aria-label="Sonne und Wolken"
+        >
+          <header class="bottom-sheet__header">
+            <span class="bottom-sheet__icon">🌅</span>
+            <div>
+              <h2 class="bottom-sheet__title">Sonne &amp; Wolken</h2>
+              <p class="bottom-sheet__subtitle">Sonnenbahn und Bewölkungsverlauf.</p>
+            </div>
+          </header>
+          <div class="bottom-sheet__body"></div>
+        </section>
+
+        <section
+          id="sheet-map-layers"
+          class="bottom-sheet"
+          aria-label="Kartenschichten auswählen"
+        >
+          <header class="bottom-sheet__header">
+            <span class="bottom-sheet__icon">🗺️</span>
+            <div>
+              <h2 class="bottom-sheet__title">Kartenschichten</h2>
+              <p class="bottom-sheet__subtitle">
+                Wähle, welche Wetterlayer auf der Karte sichtbar sind.
+              </p>
+            </div>
+          </header>
+          <div id="map-layer-list" class="bottom-sheet__body"></div>
+        </section>
+      </div>
+
+      <!-- Settings Sheets -->
+      <section
+        id="sheet-settings-theme"
+        class="bottom-sheet"
+        aria-label="Erscheinungsbild wählen"
+      >
+        <header class="bottom-sheet__header">
+          <span class="bottom-sheet__icon">🎨</span>
+          <div>
+            <h2 class="bottom-sheet__title">Aussehen</h2>
+            <p class="bottom-sheet__subtitle">
+              Themen, Animationen und App-Layout.
+            </p>
+          </div>
+        </header>
+        <div class="bottom-sheet__body" id="settings-theme-body"></div>
+      </section>
+
+      <section
+        id="sheet-settings-home"
+        class="bottom-sheet"
+        aria-label="Heimatort verwalten"
+      >
+        <header class="bottom-sheet__header">
+          <span class="bottom-sheet__icon">📍</span>
+          <div>
+            <h2 class="bottom-sheet__title">Heimatort</h2>
+            <p class="bottom-sheet__subtitle">
+              Heimatort und Favoriten verwalten.
+            </p>
+          </div>
+        </header>
+        <div class="bottom-sheet__body" id="settings-home-body"></div>
+      </section>
+
+      <section
+        id="sheet-settings-privacy"
+        class="bottom-sheet"
+        aria-label="Datenschutz &amp; APIs"
+      >
+        <header class="bottom-sheet__header">
+          <span class="bottom-sheet__icon">🔒</span>
+          <div>
+            <h2 class="bottom-sheet__title">Datenschutz &amp; APIs</h2>
+            <p class="bottom-sheet__subtitle">
+              Wie deine Daten gespeichert werden und welche Dienste genutzt werden.
+            </p>
+          </div>
+        </header>
+        <div class="bottom-sheet__body" id="settings-privacy-body"></div>
+      </section>
+
+      <section
+        id="sheet-settings-units"
+        class="bottom-sheet"
+        aria-label="Einheiten anpassen"
+      >
+        <header class="bottom-sheet__header">
+          <span class="bottom-sheet__icon">📏</span>
+          <div>
+            <h2 class="bottom-sheet__title">Einheiten</h2>
+            <p class="bottom-sheet__subtitle">
+              Temperatur, Wind, Druck und mehr.
+            </p>
+          </div>
+        </header>
+        <div class="bottom-sheet__body" id="settings-units-body"></div>
+      </section>
+
+      <section
+        id="sheet-settings-language"
+        class="bottom-sheet"
+        aria-label="Sprache wählen"
+      >
+        <header class="bottom-sheet__header">
+          <span class="bottom-sheet__icon">🌐</span>
+          <div>
+            <h2 class="bottom-sheet__title">Sprache</h2>
+            <p class="bottom-sheet__subtitle">
+              App-Sprache und Datumsformate.
+            </p>
+          </div>
+        </header>
+        <div class="bottom-sheet__body" id="settings-language-body"></div>
+      </section>
+
+      <section
+        id="sheet-settings-about"
+        class="bottom-sheet"
+        aria-label="Über Calchas"
+      >
+        <header class="bottom-sheet__header">
+          <span class="bottom-sheet__icon">ℹ️</span>
+          <div>
+            <h2 class="bottom-sheet__title">Über Calchas</h2>
+            <p class="bottom-sheet__subtitle">
+              Version, Lizenzen und Datenschutzhinweise.
+            </p>
+          </div>
+        </header>
+        <div class="bottom-sheet__body" id="settings-about-body"></div>
+      </section>
+
+      <section
+        id="sheet-map-alerts"
+        class="bottom-sheet"
+        aria-label="Wetter-Warnungen"
+      >
+        <div class="bottom-sheet__header">
+          <span class="bottom-sheet__icon">⚠️</span>
+          <span class="bottom-sheet__title">Aktive Warnungen</span>
+          <span class="bottom-sheet__subtitle" id="alert-count"
+            >0 Warnungen</span
+          >
+        </div>
+        <div class="bottom-sheet__body">
+          <div id="alert-list" class="alert-list"></div>
+        </div>
+      </section>
+
+      <div id="legacy-content" hidden>
+          <div class="app-sky" aria-hidden="true"></div>
+          <header class="app-topbar" role="banner">
       <div class="app-sky" aria-hidden="true"></div>
       <header class="app-topbar" role="banner">
         <button
@@ -61,7 +584,7 @@
         </div>
       </header>
 
-      <main class="app-main" role="main">
+      <main class="app-main" role="main" id="legacy-content">
         <div
           id="error-container"
           class="toast-stack"
@@ -1186,6 +1709,13 @@
     </div>
 
     <div
+      id="toast-container"
+      class="toast-stack"
+      aria-live="polite"
+      aria-atomic="true"
+    ></div>
+
+    <div
       id="day-detail-modal"
       class="day-detail-modal"
       aria-hidden="true"
@@ -1227,6 +1757,7 @@
     <script src="utils/iconMapper.js"></script>
     <script src="utils/cache.js"></script>
     <script src="utils/validation.js"></script>
+    <script src="utils/healthSafetyEngine.js"></script>
     <script src="utils/apiKeyManager.js"></script>
     <script src="api/weather.js"></script>
     <script src="api/brightsky.js"></script>
@@ -1237,6 +1768,8 @@
     <script src="api/sunriseSunset.js"></script>
     <script src="api/moonPhase.js"></script>
     <script src="ui/errorHandler.js"></script>
+    <script src="ui/home/WeatherHero.js"></script>
+    <script src="ui/home/HomeCards.js"></script>
     <script src="ui/searchInput.js"></script>
     <script src="ui/dayDetailTemplate.js"></script>
     <script src="ui/weatherDisplay.js"></script>
