@@ -8897,7 +8897,6 @@ body.mobile-app #legacy-content {
       grid-template-columns: 1fr;
     }
   }
-}
 
 /* ========================================
    WEATHER CARDS GRID - Visual Cards
@@ -9082,6 +9081,26 @@ body.mobile-app #legacy-content {
   flex-direction: column;
   align-items: center;
   text-align: center;
+  /* Center the numeric value inside the gauge */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+
+/* Make the pressure card's gauge visually more roomy so the number doesn't touch the ring */
+.weather-card--pressure .weather-card__gauge svg {
+  width: 96px;
+  height: 96px;
+}
+
+.weather-card--pressure .weather-card__gauge-value {
+  /* Slightly shrink the number to increase breathing room */
+  transform: translate(-50%, -50%) scale(0.92);
+}
+
+.weather-card--pressure .weather-card__value-large {
+  font-size: 2.1rem;
 }
 
 /* Blob Style (for visibility, cloud cover) */
