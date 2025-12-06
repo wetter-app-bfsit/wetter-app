@@ -26,14 +26,14 @@
       section.hidden = id !== viewId;
     });
 
-    // Hide/show app-bar based on view
+    // Hide/show app-bar based on view - only show on home
     const appBar = document.getElementById("app-bar");
     if (appBar) {
-      // Hide app-bar on settings, show on other views
-      if (viewId === "settings") {
-        appBar.style.display = "none";
-      } else {
+      // Only show app-bar on home view
+      if (viewId === "home") {
         appBar.style.display = "";
+      } else {
+        appBar.style.display = "none";
       }
     }
 
