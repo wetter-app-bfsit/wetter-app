@@ -2751,59 +2751,66 @@ body.dark-mode .source-compare-card {
   box-shadow: 0 18px 30px rgba(0, 0, 0, 0.35);
 }
 
+/* Day summary card needs transparent background since .summary-card has its own */
+#day-summary-card.card {
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
 .card--primary {
-  background: radial-gradient(
-    circle at top,
-    #233463 0,
-    #101424 65%,
-    #050816 100%
-  );
+  background: transparent;
+  box-shadow: none;
+  padding: var(--space-m) var(--space-l);
 }
 
 /* ========================================
      INSIGHT CARD (Einsichten)
      ======================================== */
 .insight-card {
-  background: rgba(18, 22, 38, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-radius: var(--radius-m);
-  padding: var(--space-l);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: transparent;
+  border-radius: 0;
+  padding: var(--space-m) 0;
+  border: none;
 }
 
 .insight-card__header {
   display: flex;
   align-items: center;
   gap: var(--space-s);
-  margin-bottom: var(--space-s);
+  margin-bottom: var(--space-m);
 }
 
 .insight-card__icon {
-  font-size: 1.2rem;
-  opacity: 0.7;
+  font-size: 1.1rem;
+  opacity: 0.85;
 }
 
 .insight-card__title {
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 600;
   margin: 0;
+  letter-spacing: 0.02em;
 }
 
 .insight-card__text {
-  font-size: 0.95rem;
-  line-height: 1.5;
-  color: var(--color-text-primary);
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.92);
   margin: 0;
+  font-weight: 400;
 }
 
 /* ========================================
      SUMMARY CARD (Tagesübersicht - aufklappbar)
      ======================================== */
 .summary-card {
-  background: rgba(20, 25, 45, 0.95);
-  border-radius: var(--radius-m);
+  background: rgba(20, 28, 50, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 16px;
   overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .summary-card__header {
@@ -2811,7 +2818,7 @@ body.dark-mode .source-compare-card {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: var(--space-l);
+  padding: var(--space-m) var(--space-l);
   background: none;
   border: none;
   color: inherit;
@@ -2826,19 +2833,21 @@ body.dark-mode .source-compare-card {
 }
 
 .summary-card__icon {
-  font-size: 1.2rem;
-  opacity: 0.7;
+  font-size: 1.1rem;
+  opacity: 0.85;
 }
 
 .summary-card__title {
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
   margin: 0;
+  letter-spacing: 0.02em;
 }
 
 .summary-card__chevron {
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   transition: transform 0.3s ease;
+  opacity: 0.7;
 }
 
 .summary-card[data-expanded="false"] .summary-card__chevron {
@@ -2855,29 +2864,34 @@ body.dark-mode .source-compare-card {
 }
 
 .summary-card__intro {
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 500;
-  margin: 0 0 var(--space-s);
+  margin: 0 0 var(--space-m);
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .summary-card__list {
   list-style: none;
   padding: 0;
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-s);
 }
 
 .summary-card__list li {
   position: relative;
-  padding-left: 1rem;
-  font-size: 0.9rem;
-  line-height: 1.6;
-  color: var(--color-text-muted);
+  padding-left: 1.2rem;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .summary-card__list li::before {
   content: "•";
   position: absolute;
   left: 0;
+  color: rgba(255, 255, 255, 0.5);
   color: var(--color-text-muted-2);
 }
 

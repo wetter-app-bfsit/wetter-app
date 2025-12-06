@@ -2,6 +2,7 @@
   function healthSafetyEngine(appState) {
     const current = appState.current || {};
     const daily = (appState.daily && appState.daily[0]) || {};
+    const aqi = appState.aqi || {};
 
     const temp = current.temperature;
     const feels = current.apparentTemperature || current.feelsLike || temp;
@@ -44,6 +45,40 @@
     if (maxUv >= 8) uvProtectionLabel = "UV-Schutz: sehr hoch";
     else if (maxUv >= 5) uvProtectionLabel = "UV-Schutz: erhöht";
 
+    // AQI Label basierend auf echten Daten
+    let aqiLabel = null;
+    const aqiValue = aqi.europeanAqi || aqi.usAqi || null;
+    const aqiLabelRaw = aqi.label || null;
+
+    if (aqiValue != null && aqiLabelRaw) {
+      // Übersetze englische Labels
+      const labelMap = {
+        Good: "gut",
+        Fair: "akzeptabel",
+        Moderate: "mäßig",
+        Poor: "schlecht",
+        "Very Poor": "sehr schlecht",
+        "Extremely Poor": "extrem schlecht",
+        "Unhealthy for Sensitive Groups": "kritisch für empfindliche Gruppen",
+        Unhealthy: "ungesund",
+        "Very Unhealthy": "sehr ungesund",
+        Hazardous: "gefährlich",
+      };
+      const translated = labelMap[aqiLabelRaw] || aqiLabelRaw.toLowerCase();
+      aqiLabel = `Die Luftqualität ist ${translated} (AQI ${Math.round(
+        aqiValue
+      )}).`;
+    } else if (aqiValue != null) {
+      // Fallback: generiere Label aus Wert
+      let quality = "gut";
+      if (aqiValue > 100) quality = "schlecht";
+      else if (aqiValue > 50) quality = "mäßig";
+      else if (aqiValue > 25) quality = "akzeptabel";
+      aqiLabel = `Die Luftqualität ist ${quality} (AQI ${Math.round(
+        aqiValue
+      )}).`;
+    }
+
     const outdoorScoreTimeline = hourly.slice(0, 24).map((h) => {
       const hourTemp = h.temperature != null ? h.temperature : temp;
       const hourFeels =
@@ -83,6 +118,7 @@
       drivingLabel,
       heatLabel,
       uvProtectionLabel,
+      aqiLabel,
       outdoorScoreTimeline,
       raw: { temp, feels, precipProb, wind, humidity },
     };

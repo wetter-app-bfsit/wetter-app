@@ -68,26 +68,112 @@
 
     const daily = (appState.daily && appState.daily[0]) || {};
     const current = appState.current || {};
+    const hourly = appState.hourly || [];
+
     const tempDelta =
       daily.temperatureMax != null && daily.temperatureMin != null
         ? Math.round(daily.temperatureMax - daily.temperatureMin)
         : null;
 
-    let insightText =
-      "Heute sind keine größeren Wetterüberraschungen zu erwarten.";
+    // Finde maximale Luftfeuchtigkeit des Tages
+    let maxHumidity = current.humidity || 0;
+    let maxHumidityTime = null;
+    hourly.forEach((h) => {
+      if (h.humidity > maxHumidity) {
+        maxHumidity = h.humidity;
+        maxHumidityTime = h.time || h.timeLabel;
+      }
+    });
 
-    if (tempDelta != null && tempDelta >= 8) {
+    // Finde maximale Regenwahrscheinlichkeit
+    const maxPrecipProb = Math.max(
+      daily.precipProbMax || 0,
+      daily.precipitationProbabilityMax || 0,
+      ...hourly.map((h) => h.precipitationProbability || h.precipProb || 0)
+    );
+
+    // UV-Index Maximum
+    const maxUv = Math.max(
+      daily.uvIndexMax || 0,
+      ...hourly.map((h) => h.uvIndex || h.uv || 0)
+    );
+
+    // Windgeschwindigkeit Maximum
+    const maxWind = Math.max(
+      daily.windSpeedMax || 0,
+      current.windSpeed || 0,
+      ...hourly.map((h) => h.windSpeed || 0)
+    );
+
+    // Generiere Insight basierend auf echten Wetterdaten
+    let insightText = null;
+    let iconEmoji = "🌡️";
+
+    // Prioritäten für Einsichten (wichtigste zuerst)
+    if (tempDelta != null && tempDelta >= 10) {
       insightText = `Heute sind große Temperaturschwankungen zu erwarten — Zieh dich im Zwiebel-Look an! (Δ ${tempDelta}°)`;
-    } else if (current.humidity >= 80) {
-      insightText = `Später werden schwüle Bedingungen mit einer Luftfeuchtigkeit von etwa ${Math.round(
-        current.humidity
+      iconEmoji = "🌡️";
+    } else if (maxPrecipProb >= 70) {
+      insightText = `Hohe Regenwahrscheinlichkeit von ${Math.round(
+        maxPrecipProb
+      )}% — Regenschirm nicht vergessen!`;
+      iconEmoji = "🌧️";
+    } else if (maxUv >= 8) {
+      insightText = `Sehr hoher UV-Index von ${maxUv.toFixed(
+        1
+      )} erwartet — Sonnenschutz ist wichtig!`;
+      iconEmoji = "☀️";
+    } else if (maxWind >= 50) {
+      insightText = `Starker Wind mit bis zu ${Math.round(
+        maxWind
+      )} km/h erwartet — Vorsicht bei Outdoor-Aktivitäten!`;
+      iconEmoji = "💨";
+    } else if (maxHumidity >= 85 && maxHumidityTime) {
+      const timeStr = new Date(maxHumidityTime).toLocaleTimeString("de-DE", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      insightText = `Um ${timeStr} werden schwüle Bedingungen mit einer Luftfeuchtigkeit von ${Math.round(
+        maxHumidity
       )}% erwartet.`;
+      iconEmoji = "💧";
+    } else if (current.humidity >= 80) {
+      insightText = `Aktuell schwüle Bedingungen mit einer Luftfeuchtigkeit von etwa ${Math.round(
+        current.humidity
+      )}%.`;
+      iconEmoji = "💧";
+    } else if (tempDelta != null && tempDelta >= 8) {
+      insightText = `Heute sind merkliche Temperaturschwankungen zu erwarten (Δ ${tempDelta}°).`;
+      iconEmoji = "🌡️";
+    } else if (maxUv >= 5) {
+      insightText = `Erhöhter UV-Index von ${maxUv.toFixed(
+        1
+      )} erwartet — Sonnenschutz empfohlen.`;
+      iconEmoji = "☀️";
+    } else if (maxPrecipProb >= 40) {
+      insightText = `Leichte Regenwahrscheinlichkeit von ${Math.round(
+        maxPrecipProb
+      )}% — eventuell Regenschirm mitnehmen.`;
+      iconEmoji = "🌦️";
+    } else {
+      // Fallback mit echten Werten
+      const tempMax =
+        daily.temperatureMax != null ? Math.round(daily.temperatureMax) : null;
+      const tempMin =
+        daily.temperatureMin != null ? Math.round(daily.temperatureMin) : null;
+      if (tempMax != null && tempMin != null) {
+        insightText = `Ein ruhiger Tag mit Temperaturen zwischen ${tempMin}° und ${tempMax}°.`;
+      } else {
+        insightText =
+          "Heute sind keine größeren Wetterüberraschungen zu erwarten.";
+      }
+      iconEmoji = "✨";
     }
 
     el.innerHTML = `
       <div class="insight-card">
         <div class="insight-card__header">
-          <span class="insight-card__icon">🅰</span>
+          <span class="insight-card__icon">${iconEmoji}</span>
           <h2 class="insight-card__title">Einsichten</h2>
         </div>
         <p class="insight-card__text">${insightText}</p>
@@ -121,42 +207,89 @@
           hour: "2-digit",
           minute: "2-digit",
         })
-      : "später";
+      : null;
 
-    // Bestimme Morgen-Beschreibung
+    // Bestimme Morgen-Beschreibung basierend auf echter aktueller Temperatur
     const morningTemp = current.temperature;
-    let morningDesc = "Milder Start in den Tag.";
+    let morningDesc = "";
     if (morningTemp != null) {
-      if (morningTemp < 5) morningDesc = "Kühler Start in den Tag.";
+      if (morningTemp < 0) morningDesc = "Frostiger Start in den Tag.";
+      else if (morningTemp < 5) morningDesc = "Kühler Start in den Tag.";
       else if (morningTemp < 10) morningDesc = "Frischer Start in den Tag.";
-      else if (morningTemp > 20) morningDesc = "Warmer Start in den Tag.";
+      else if (morningTemp < 15) morningDesc = "Milder Start in den Tag.";
+      else if (morningTemp < 20) morningDesc = "Angenehmer Start in den Tag.";
+      else if (morningTemp < 25) morningDesc = "Warmer Start in den Tag.";
+      else morningDesc = "Heißer Start in den Tag.";
     }
 
-    // Luftqualität
-    const aqiLabel =
-      healthState?.aqiLabel || "Heute ist die Luft im Freien angenehm.";
+    // Luftqualität - nur anzeigen wenn echte Daten vorhanden
+    const aqiLabel = healthState?.aqiLabel || null;
 
-    // Temperaturbereich
+    // Temperaturbereich - nur wenn beide Werte vorhanden
     const min =
       daily.temperatureMin != null ? Math.round(daily.temperatureMin) : null;
     const max =
       daily.temperatureMax != null ? Math.round(daily.temperatureMax) : null;
     const tempRange =
       min != null && max != null
-        ? `Erwarte einen Temperaturbereich von ${
-            min < 0 ? min : min
-          }° bis ${max}°.`
+        ? `Erwarte einen Temperaturbereich von ${min}° bis ${max}°.`
         : "";
 
-    // Tageslänge
+    // Tageslänge - nur wenn Sonnenauf-/untergang vorhanden
     const sunrise = daily.sunrise ? new Date(daily.sunrise) : null;
     const sunset = daily.sunset ? new Date(daily.sunset) : null;
     let daylightStr = "";
-    if (sunrise && sunset) {
+    if (sunrise && sunset && !isNaN(sunrise) && !isNaN(sunset)) {
       const diffMs = sunset - sunrise;
       const hours = Math.floor(diffMs / 3600000);
       const mins = Math.floor((diffMs % 3600000) / 60000);
       daylightStr = `Tageslänge: ${hours} Std ${mins} Min`;
+    }
+
+    // Niederschlagswahrscheinlichkeit
+    const maxPrecipProb = Math.max(
+      daily.precipProbMax || 0,
+      daily.precipitationProbabilityMax || 0,
+      ...hourly.map((h) => h.precipitationProbability || h.precipProb || 0)
+    );
+
+    // Baue Liste der Bulletpoints
+    const bullets = [];
+
+    // Luftfeuchtigkeit nur wenn hoch genug und Zeit bekannt
+    if (maxHumidity >= 80 && humidityTime) {
+      bullets.push(
+        `Um ${humidityTime} werden schwüle Bedingungen mit einer Luftfeuchtigkeit von ${Math.round(
+          maxHumidity
+        )}% erwartet.`
+      );
+    }
+
+    // Luftqualität nur wenn echte Daten
+    if (aqiLabel) {
+      bullets.push(aqiLabel);
+    }
+
+    // Regenwahrscheinlichkeit wenn relevant
+    if (maxPrecipProb >= 30) {
+      bullets.push(
+        `Regenwahrscheinlichkeit: bis zu ${Math.round(maxPrecipProb)}%.`
+      );
+    }
+
+    // Temperaturbereich
+    if (tempRange) {
+      bullets.push(tempRange);
+    }
+
+    // Tageslänge
+    if (daylightStr) {
+      bullets.push(daylightStr);
+    }
+
+    // Falls keine Bullets, zeige generische Nachricht
+    if (bullets.length === 0) {
+      bullets.push("Wetterdaten werden geladen...");
     }
 
     el.innerHTML = `
@@ -169,18 +302,13 @@
           <span class="summary-card__chevron material-symbols-outlined">expand_less</span>
         </button>
         <div class="summary-card__content" id="summary-content">
-          <p class="summary-card__intro">${morningDesc}</p>
+          ${
+            morningDesc
+              ? `<p class="summary-card__intro">${morningDesc}</p>`
+              : ""
+          }
           <ul class="summary-card__list">
-            ${
-              maxHumidity >= 80
-                ? `<li>Um ${humidityTime} werden schwüle Bedingungen mit einer Luftfeuchtigkeit von ${Math.round(
-                    maxHumidity
-                  )}% erwartet.</li>`
-                : ""
-            }
-            <li>${aqiLabel}</li>
-            ${tempRange ? `<li>${tempRange}</li>` : ""}
-            ${daylightStr ? `<li>${daylightStr}</li>` : ""}
+            ${bullets.map((b) => `<li>${b}</li>`).join("")}
           </ul>
         </div>
       </div>
