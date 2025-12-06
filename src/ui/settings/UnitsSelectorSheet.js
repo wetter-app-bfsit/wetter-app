@@ -3,6 +3,29 @@
  * Design inspiriert von WeatherMaster App (Screenshot 2)
  */
 (function (global) {
+  // Toast notification helper
+  function showToast(message, isError) {
+    var existing = document.querySelector(".settings-toast");
+    if (existing) existing.remove();
+
+    var toast = document.createElement("div");
+    toast.className =
+      "settings-toast" + (isError ? " settings-toast--error" : "");
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    requestAnimationFrame(function () {
+      toast.classList.add("settings-toast--visible");
+    });
+
+    setTimeout(function () {
+      toast.classList.remove("settings-toast--visible");
+      setTimeout(function () {
+        toast.remove();
+      }, 300);
+    }, 2500);
+  }
+
   // SVG Line Icons für Einheiten
   const ICONS = {
     temp: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 4v10.54a4 4 0 11-4 0V4a2 2 0 114 0z"/></svg>`,
@@ -255,8 +278,12 @@
     modal.querySelectorAll(".unit-selector-option").forEach((btn) => {
       btn.addEventListener("click", () => {
         const value = btn.getAttribute("data-value");
+        const config = UNIT_CONFIGS[kind];
+        const option = config?.options?.find((o) => o.value === value);
+        const label = option ? option.label : value;
         applyUnit(appState, kind, value);
         modal.remove();
+        showToast("✓ " + config.title + " auf " + label + " geändert");
         renderUnitsSheet(appState);
       });
     });

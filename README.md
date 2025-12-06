@@ -4,6 +4,15 @@ Calchas ist eine moderne, responsive PWA-Wetterplattform mit Dual-API-Support, O
 
 **BFS-IT-Projekt | Team: Max, Robin, Samreen, Yannik, Felix**
 
+## 📱 Discord Community
+🌦️ **DevHub**: [https://discord.gg/bjFM6zCZ]
+💬 Feedback, Tipps, Code-Reviews, Contributor-Onboarding
+
+**Rollen:**
+🆕 @Neuling - Neue Mitglieder
+💻 @Contributor - PR-Autoren
+👨‍💻 @Core-Team - Hauptentwickler
+
 ## Features
 
 - **🌍 Ortssuche**: Per Nominatim Geocoding (OpenStreetMap)

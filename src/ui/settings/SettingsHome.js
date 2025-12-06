@@ -88,12 +88,6 @@
           "sheet-settings-import"
         )}
         ${renderRow(
-          "discord",
-          "Tritt unserem Discord Server bei",
-          null,
-          "sheet-settings-discord"
-        )}
-        ${renderRow(
           "about",
           "Über Calchas",
           "Änderungsprotokoll, Version, Lizenzen und mehr",

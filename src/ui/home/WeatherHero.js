@@ -195,21 +195,24 @@
     console.log("[WeatherHero] Rendering with data:", data);
     heroEl.innerHTML = buildHeroHtml(data);
 
-    // Render Frog Background - stelle sicher dass weatherCode übergeben wird
+    // Render Frog Background - mit Timezone für korrekte Standort-Zeit!
     if (global.FrogHeroPlayer && global.FrogHeroPlayer.renderFrogHero) {
       try {
-        // Erweitere current mit weatherCode falls nicht vorhanden
-        const frogData = {
-          ...current,
-          weatherCode:
-            current.weatherCode ??
-            current.code ??
-            current.weather_code ??
-            data.weatherCode,
-          time: current.time || new Date().toISOString(),
+        // Übergebe vollständigen homeState mit timezone für korrekte Tageszeit-Berechnung
+        const frogState = {
+          current: {
+            ...current,
+            weatherCode:
+              current.weatherCode ??
+              current.code ??
+              current.weather_code ??
+              data.weatherCode,
+            time: current.time || new Date().toISOString(),
+          },
+          timezone: appState.timezone || location.timezone,
         };
-        console.log("[WeatherHero] FrogHero data:", frogData);
-        global.FrogHeroPlayer.renderFrogHero(frogData);
+        console.log("[WeatherHero] FrogHero state:", frogState);
+        global.FrogHeroPlayer.renderFrogHero(frogState);
       } catch (e) {
         console.warn("FrogHero konnte nicht gerendert werden", e);
       }

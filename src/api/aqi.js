@@ -52,9 +52,10 @@ export class AQIAPI {
    * Fetches pollen data from Open-Meteo Air Quality API
    * @param {number} lat - Latitude
    * @param {number} lon - Longitude
+   * @param {string} [timezone] - Optional timezone for correct hour calculation
    * @returns {Promise<object|null>} - Pollen data with trees, grass, weeds levels (1-4 scale)
    */
-  async fetchPollenData(lat, lon) {
+  async fetchPollenData(lat, lon, timezone) {
     try {
       const url = new URL(this.baseUrl);
       url.searchParams.set("latitude", String(lat));
@@ -65,6 +66,9 @@ export class AQIAPI {
         "alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen"
       );
       url.searchParams.set("forecast_days", "1");
+      if (timezone) {
+        url.searchParams.set("timezone", timezone);
+      }
 
       const res = await fetch(url.toString());
       if (!res.ok) throw new Error(`Pollen API error: ${res.status}`);
@@ -73,9 +77,23 @@ export class AQIAPI {
       const times = data.hourly?.time || [];
       if (!times.length) return null;
 
-      // Find current hour index
-      const now = new Date();
-      const currentHour = now.getHours();
+      // Find current hour index - use location timezone if available
+      let currentHour;
+      if (timezone) {
+        try {
+          const locationTimeStr = new Date().toLocaleString("en-US", {
+            timeZone: timezone,
+            hour: "numeric",
+            hour12: false,
+          });
+          currentHour = parseInt(locationTimeStr, 10);
+        } catch (e) {
+          currentHour = new Date().getHours();
+        }
+      } else {
+        currentHour = new Date().getHours();
+      }
+
       let idx = 0;
       for (let i = 0; i < times.length; i++) {
         const hour = new Date(times[i]).getHours();

@@ -41,19 +41,44 @@
   // Karten-Hintergrundfarbe (für unteren Übergang)
   const CARD_BG_COLOR = "#0f1729";
 
-  function getTimeOfDay(current) {
+  function getTimeOfDay(current, timezone) {
     if (!current) return "day";
 
-    // Versuche die Stunde aus verschiedenen Quellen zu bekommen
+    // Versuche die Stunde aus der Standort-Timezone zu bekommen
     let hour;
-    if (current.time) {
+
+    // Priorität: Standort-Timezone verwenden (nicht Geräte-Lokalzeit!)
+    if (timezone) {
+      try {
+        const locationTime = new Date().toLocaleString("en-US", {
+          timeZone: timezone,
+          hour: "numeric",
+          hour12: false,
+        });
+        hour = parseInt(locationTime, 10);
+        console.log(
+          `[FrogHero] Using location timezone: ${timezone}, hour: ${hour}`
+        );
+      } catch (e) {
+        console.warn("[FrogHero] Timezone parsing failed:", e);
+        hour = null;
+      }
+    }
+
+    // Fallback: Zeit aus current.time (falls vorhanden und keine Timezone)
+    if (hour == null && current.time) {
       try {
         hour = new Date(current.time).getHours();
+        console.log(`[FrogHero] Using current.time, hour: ${hour}`);
       } catch (e) {
-        hour = new Date().getHours();
+        hour = null;
       }
-    } else {
+    }
+
+    // Letzter Fallback: Geräte-Lokalzeit (sollte vermieden werden)
+    if (hour == null) {
       hour = new Date().getHours();
+      console.warn("[FrogHero] Fallback to device time, hour:", hour);
     }
 
     if (hour >= 5 && hour < 10) return "morning";
@@ -85,8 +110,8 @@
     return "cloudy";
   }
 
-  function buildSceneKey(current) {
-    const tod = getTimeOfDay(current);
+  function buildSceneKey(current, timezone) {
+    const tod = getTimeOfDay(current, timezone);
     const cond = getCondition(current);
     return `${SCENE_TYPE}_${tod}_${cond}`;
   }
@@ -207,7 +232,7 @@
     console.log("[FrogHero] Applied sky colors for", tod, cond, ":", colors);
   }
 
-  function applyBackground(sceneKey, current) {
+  function applyBackground(sceneKey, current, timezone) {
     const pond = document.getElementById("frog-hero-pond");
     if (!pond) {
       console.warn("[FrogHero] frog-hero-pond nicht gefunden");
@@ -223,16 +248,40 @@
     pond.style.backgroundRepeat = "no-repeat";
     pond.style.minHeight = "220px";
 
-    // Dynamische Gradienten anwenden
-    const tod = getTimeOfDay(current);
+    // Dynamische Gradienten anwenden (mit Standort-Timezone)
+    const tod = getTimeOfDay(current, timezone);
     const cond = getCondition(current);
     applyDynamicGradients(tod, cond);
   }
 
-  function renderFrogHero(current) {
-    const sceneKey = buildSceneKey(current || {});
-    console.log("[FrogHero] Scene Key:", sceneKey, "Current:", current);
-    applyBackground(sceneKey, current);
+  /**
+   * Rendert den Frog Hero Hintergrund basierend auf Wetter und Standort-Zeit
+   * @param {Object} currentOrState - Entweder current-Objekt oder vollständiger homeState
+   * @param {string} [timezone] - Optional: Standort-Timezone (falls nicht in currentOrState enthalten)
+   */
+  function renderFrogHero(currentOrState, timezone) {
+    // Unterstütze beide Aufrufvarianten:
+    // 1. renderFrogHero(homeState) - vollständiger State mit timezone
+    // 2. renderFrogHero(current, timezone) - separater timezone Parameter
+    let current = currentOrState;
+    let tz = timezone;
+
+    // Wenn homeState übergeben wurde, extrahiere current und timezone
+    if (currentOrState && (currentOrState.current || currentOrState.timezone)) {
+      current = currentOrState.current || currentOrState;
+      tz = currentOrState.timezone || timezone;
+    }
+
+    const sceneKey = buildSceneKey(current || {}, tz);
+    console.log(
+      "[FrogHero] Scene Key:",
+      sceneKey,
+      "Timezone:",
+      tz,
+      "Current:",
+      current
+    );
+    applyBackground(sceneKey, current, tz);
   }
 
   global.FrogHeroPlayer = {

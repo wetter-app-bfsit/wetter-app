@@ -1283,6 +1283,8 @@ function renderDemoExperience(reason = "") {
         name: locationDetails.city || appState.currentCity,
         cityName: locationDetails.city || appState.currentCity,
         country: locationDetails.country || "Deutschland",
+        timezone:
+          demoData.openMeteo?.timezone || locationDetails.timezone || null,
       },
       locationDetails: locationDetails,
       sunEvents: sunEvents,
@@ -1290,6 +1292,10 @@ function renderDemoExperience(reason = "") {
       windUnit: appState.units?.wind || "km/h",
       locale: appState.locale || "de-DE",
       lastUpdated: Date.now(),
+      timezone:
+        demoData.openMeteo?.timezone ||
+        locationDetails.timezone ||
+        "Europe/Berlin",
       aqi: demoData.aqi || {},
       pollen: demoData.pollen || {},
       moonPhase: demoData.moonPhase || {},
@@ -2441,13 +2447,48 @@ function buildRenderData(rawData, units) {
     result.pollen = rawData.pollen || null;
 
     // Finde den Index der aktuellen Stunde in den hourly-Daten
-    const findCurrentHourIndex = (hourlyArray) => {
+    // WICHTIG: Verwende Standort-Timezone, nicht Geräte-Lokalzeit!
+    const findCurrentHourIndex = (hourlyArray, timezone) => {
       if (!Array.isArray(hourlyArray) || !hourlyArray.length) return 0;
-      const now = new Date();
-      const currentHour = now.getHours();
-      const currentDateStr = now.toISOString().split("T")[0];
 
-      // Suche die Stunde, die am nächsten zur aktuellen Zeit ist
+      // Aktuelle Zeit in der Standort-Timezone berechnen
+      let currentHour, currentDateStr;
+      if (timezone) {
+        try {
+          const locationTimeStr = new Date().toLocaleString("en-US", {
+            timeZone: timezone,
+            hour: "numeric",
+            hour12: false,
+          });
+          currentHour = parseInt(locationTimeStr, 10);
+
+          const locationDateStr = new Date().toLocaleDateString("en-CA", {
+            timeZone: timezone,
+          }); // en-CA gibt YYYY-MM-DD Format
+          currentDateStr = locationDateStr;
+          console.log(
+            `[buildRenderData] Using location timezone: ${timezone}, hour: ${currentHour}, date: ${currentDateStr}`
+          );
+        } catch (e) {
+          console.warn(
+            "[buildRenderData] Timezone parsing failed, using local time:",
+            e
+          );
+          const now = new Date();
+          currentHour = now.getHours();
+          currentDateStr = now.toISOString().split("T")[0];
+        }
+      } else {
+        // Fallback auf lokale Gerätezeit (sollte vermieden werden)
+        const now = new Date();
+        currentHour = now.getHours();
+        currentDateStr = now.toISOString().split("T")[0];
+        console.warn(
+          "[buildRenderData] No timezone provided, falling back to device time"
+        );
+      }
+
+      // Suche die Stunde, die am nächsten zur aktuellen Standort-Zeit ist
       for (let i = 0; i < hourlyArray.length; i++) {
         const h = hourlyArray[i];
         if (!h.time) continue;
@@ -2469,8 +2510,13 @@ function buildRenderData(rawData, units) {
       return 0;
     };
 
-    // Filtere hourly-Daten ab der aktuellen Stunde
-    const currentHourIdx = findCurrentHourIndex(result.openMeteo?.hourly);
+    // Filtere hourly-Daten ab der aktuellen Stunde (mit Standort-Timezone!)
+    const locationTimezone =
+      rawData.openMeteo?.timezone || result.locationDetails?.timezone;
+    const currentHourIdx = findCurrentHourIndex(
+      result.openMeteo?.hourly,
+      locationTimezone
+    );
     result.hourly = result.openMeteo?.hourly?.slice(currentHourIdx) || [];
 
     // Erstelle currentSnapshot aus der AKTUELLEN Stunde (nicht der ersten im Array)
@@ -3494,7 +3540,8 @@ async function loadWeather(city, options = {}) {
       // Render Froggy Hero Background
       if (window.FrogHeroPlayer && window.FrogHeroPlayer.renderFrogHero) {
         try {
-          window.FrogHeroPlayer.renderFrogHero(homeState.current);
+          // Übergebe vollständigen homeState mit timezone (nicht nur current!)
+          window.FrogHeroPlayer.renderFrogHero(homeState);
         } catch (e) {
           console.warn("FrogHeroPlayer Rendering fehlgeschlagen", e);
         }
@@ -3682,6 +3729,15 @@ async function loadWeatherByCoords(lat, lon, cityName, options = {}) {
       if (window.WeatherCards?.renderWeatherCards) {
         window.WeatherCards.renderWeatherCards(homeState);
       }
+
+      // Render Froggy Hero Background
+      if (window.FrogHeroPlayer?.renderFrogHero) {
+        try {
+          window.FrogHeroPlayer.renderFrogHero(homeState);
+        } catch (e) {
+          console.warn("FrogHeroPlayer Rendering fehlgeschlagen", e);
+        }
+      }
     } catch (e) {
       console.warn("Home-Layout Rendering fehlgeschlagen", e);
     }
@@ -3718,6 +3774,8 @@ async function loadWeatherByCoords(lat, lon, cityName, options = {}) {
 if (typeof window !== "undefined") {
   window.loadWeather = loadWeather;
   window.loadWeatherByCoords = loadWeatherByCoords;
+  window.buildRenderData = buildRenderData;
+  window.renderFromRenderData = renderFromRenderData;
 }
 
 function initializeFeatureModules() {
