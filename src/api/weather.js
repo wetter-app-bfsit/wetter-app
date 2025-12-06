@@ -143,6 +143,7 @@ class OpenMeteoAPI {
       feelsLike: apparent[i],
       precipitation: precipitation[i],
       precipitationProbability: precipitationProb[i],
+      precipProb: precipitationProb[i],
       uvIndex: uvIndex[i],
       uvIndexClearSky: uvClear[i],
       pressure: pressure[i],

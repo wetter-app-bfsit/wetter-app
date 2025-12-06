@@ -221,6 +221,9 @@ class MoonPhaseAPI {
         context?.locationDetails?.locality ||
         null;
 
+      // Berechne Mondauf- und -untergangszeiten (Näherung)
+      const moonTimes = this._computeMoonTimes(target, cycle, context);
+
       return {
         phase: phaseInfo.name,
         illumination,
@@ -228,8 +231,8 @@ class MoonPhaseAPI {
           1
         )}% beleuchtet)`,
         zodiac: null,
-        moonrise: null,
-        moonset: null,
+        moonrise: moonTimes.moonrise,
+        moonset: moonTimes.moonset,
         emoji: phaseInfo.emoji,
         daysSinceNew: age,
         nextFullMoon: null,
@@ -240,6 +243,97 @@ class MoonPhaseAPI {
       console.warn("MoonPhase Local fallback fehlgeschlagen", error);
       return null;
     }
+  }
+
+  /**
+   * Berechnet Mondauf- und -untergangszeiten (Näherung)
+   * Basiert auf dem Mondalter im Zyklus - der Mond geht jeden Tag etwa 50 Minuten später auf
+   */
+  _computeMoonTimes(date, cycle, context = {}) {
+    try {
+      const lat =
+        context?.latitude ||
+        context?.lat ||
+        context?.locationDetails?.latitude ||
+        50; // Default: Mitteleuropa
+      const targetDate = new Date(date);
+
+      // Basis: Bei Neumond geht der Mond ungefähr mit der Sonne auf/unter
+      // Bei Vollmond ist es umgekehrt (Aufgang bei Sonnenuntergang)
+      // Der Mond geht jeden Tag etwa 50 Minuten später auf
+
+      // Basiszeiten für Sonnenauf-/untergang (Näherung für Mitteleuropa im Dezember)
+      const month = targetDate.getMonth();
+      const dayOfYear = this._getDayOfYear(targetDate);
+
+      // Berechne ungefähre Sonnenauf-/untergangszeit basierend auf Jahreszeit
+      const sunriseHour = this._estimateSunriseHour(dayOfYear, lat);
+      const sunsetHour = this._estimateSunsetHour(dayOfYear, lat);
+
+      // Mondaufgang verschiebt sich um etwa 50 Minuten pro Tag durch den Zyklus
+      // Bei Neumond (cycle=0): Mond geht mit Sonne auf
+      // Bei Vollmond (cycle=0.5): Mond geht mit Sonne unter auf
+      const moonPhaseOffset = cycle * 24; // Stunden Offset durch Mondzyklus
+
+      // Berechne Mondaufgangszeit
+      let moonriseHour = (sunriseHour + moonPhaseOffset) % 24;
+      let moonsetHour = (sunsetHour + moonPhaseOffset) % 24;
+
+      // Erstelle ISO-Strings für die Zeiten
+      const moonriseDate = new Date(targetDate);
+      moonriseDate.setHours(
+        Math.floor(moonriseHour),
+        Math.round((moonriseHour % 1) * 60),
+        0,
+        0
+      );
+
+      const moonsetDate = new Date(targetDate);
+      moonsetDate.setHours(
+        Math.floor(moonsetHour),
+        Math.round((moonsetHour % 1) * 60),
+        0,
+        0
+      );
+
+      // Falls Monduntergang vor Mondaufgang liegt, ist es am nächsten Tag
+      if (moonsetDate <= moonriseDate) {
+        moonsetDate.setDate(moonsetDate.getDate() + 1);
+      }
+
+      return {
+        moonrise: moonriseDate.toISOString(),
+        moonset: moonsetDate.toISOString(),
+      };
+    } catch (error) {
+      console.warn("Mondzeiten-Berechnung fehlgeschlagen", error);
+      return { moonrise: null, moonset: null };
+    }
+  }
+
+  _getDayOfYear(date) {
+    const start = new Date(date.getFullYear(), 0, 0);
+    const diff = date - start;
+    const oneDay = 1000 * 60 * 60 * 24;
+    return Math.floor(diff / oneDay);
+  }
+
+  _estimateSunriseHour(dayOfYear, lat) {
+    // Einfache Näherung für Sonnenaufgang basierend auf Tag des Jahres
+    // Wintersonnenwende (Tag 355): spätester Aufgang
+    // Sommersonnenwende (Tag 172): frühester Aufgang
+    const amplitude = 2.5 * (Math.abs(lat) / 50); // Amplitude basierend auf Breitengrad
+    const offset =
+      Math.cos(((dayOfYear - 172) * 2 * Math.PI) / 365) * amplitude;
+    return 6 + offset; // Basis 6 Uhr +/- Amplitude
+  }
+
+  _estimateSunsetHour(dayOfYear, lat) {
+    // Einfache Näherung für Sonnenuntergang
+    const amplitude = 2.5 * (Math.abs(lat) / 50);
+    const offset =
+      Math.cos(((dayOfYear - 172) * 2 * Math.PI) / 365) * amplitude;
+    return 18 - offset; // Basis 18 Uhr +/- Amplitude
   }
 
   _normalizeCycle(value) {

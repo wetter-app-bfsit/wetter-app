@@ -1,6 +1,15 @@
 import "../../i18n/helper.js";
 
+/**
+ * LanguageSelectorSheet.js - Sprach-Auswahl
+ * Design inspiriert von WeatherMaster App
+ */
 (function (global) {
+  const LANGUAGE_OPTIONS = [
+    { value: "de", flag: "🇩🇪", title: "Deutsch" },
+    { value: "en", flag: "🇬🇧", title: "English" },
+  ];
+
   function renderLanguageSheet(appState) {
     const container = document.getElementById("settings-language-body");
     if (!container || !global.i18n) return;
@@ -8,9 +17,10 @@ import "../../i18n/helper.js";
     const current = global.i18n.getLanguage();
 
     container.innerHTML = `
-      <div class="settings-options">
-        ${option("de", "🇩🇪", "Deutsch", current)}
-        ${option("en", "🇬🇧", "English", current)}
+      <div class="language-settings">
+        ${LANGUAGE_OPTIONS.map((opt) =>
+          renderLanguageOption(opt, current)
+        ).join("")}
       </div>
     `;
 
@@ -26,16 +36,19 @@ import "../../i18n/helper.js";
     });
   }
 
-  function option(value, icon, title, current) {
-    const active = current === value ? " settings-option--active" : "";
+  function renderLanguageOption(option, current) {
+    const isActive = current === option.value;
+    const activeClass = isActive ? " language-option--active" : "";
+
     return `
       <button
         type="button"
-        class="settings-option${active}"
-        data-lang="${value}"
+        class="language-option${activeClass}"
+        data-lang="${option.value}"
       >
-        <span class="settings-option__icon">${icon}</span>
-        <span class="settings-option__title">${title}</span>
+        <span class="language-option__flag">${option.flag}</span>
+        <span class="language-option__title">${option.title}</span>
+        ${isActive ? '<span class="language-option__check">✓</span>' : ""}
       </button>
     `;
   }
@@ -43,6 +56,7 @@ import "../../i18n/helper.js";
   function applyLanguage(appState, lang) {
     if (!appState.settings) appState.settings = {};
     appState.settings.locale = lang;
+    appState.locale = lang;
     try {
       localStorage.setItem("app-language", lang);
     } catch (e) {}

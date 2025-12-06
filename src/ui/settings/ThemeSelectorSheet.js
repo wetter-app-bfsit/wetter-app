@@ -1,22 +1,39 @@
 import "../../i18n/helper.js";
 
+/**
+ * ThemeSelectorSheet.js - Theme-Auswahl
+ * Design inspiriert von WeatherMaster App
+ */
 (function (global) {
+  const THEME_OPTIONS = [
+    {
+      value: "system",
+      icon: "🖥️",
+      title: "System",
+      subtitle: "Folgt dem Gerätemodus",
+    },
+    {
+      value: "light",
+      icon: "☀️",
+      title: "Hell",
+      subtitle: "Helles Layout mit hohem Kontrast",
+    },
+    {
+      value: "dark",
+      icon: "🌙",
+      title: "Dunkel",
+      subtitle: "Dunkles Layout für nachts",
+    },
+  ];
+
   function renderThemeSheet(appState) {
     const container = document.getElementById("settings-theme-body");
     if (!container) return;
     const current = appState?.settings?.theme || "system";
 
     container.innerHTML = `
-      <div class="settings-options">
-        ${option("system", "🖥️", "System", "Folgt dem Gerätemodus.", current)}
-        ${option(
-          "light",
-          "🌞",
-          "Hell",
-          "Helles Layout mit hohem Kontrast.",
-          current
-        )}
-        ${option("dark", "🌙", "Dunkel", "Dunkles Layout für nachts.", current)}
+      <div class="theme-settings">
+        ${THEME_OPTIONS.map((opt) => renderThemeOption(opt, current)).join("")}
       </div>
     `;
 
@@ -29,19 +46,22 @@ import "../../i18n/helper.js";
     });
   }
 
-  function option(value, icon, title, subtitle, current) {
-    const active = current === value ? " settings-option--active" : "";
+  function renderThemeOption(option, current) {
+    const isActive = current === option.value;
+    const activeClass = isActive ? " theme-option--active" : "";
+
     return `
       <button
         type="button"
-        class="settings-option${active}"
-        data-theme-value="${value}"
+        class="theme-option${activeClass}"
+        data-theme-value="${option.value}"
       >
-        <span class="settings-option__icon">${icon}</span>
-        <span class="settings-option__content">
-          <span class="settings-option__title">${title}</span>
-          <span class="settings-option__subtitle">${subtitle}</span>
+        <span class="theme-option__icon">${option.icon}</span>
+        <span class="theme-option__content">
+          <span class="theme-option__title">${option.title}</span>
+          <span class="theme-option__subtitle">${option.subtitle}</span>
         </span>
+        ${isActive ? '<span class="theme-option__check">✓</span>' : ""}
       </button>
     `;
   }
@@ -53,6 +73,18 @@ import "../../i18n/helper.js";
       localStorage.setItem("wetter_theme", value);
     } catch (e) {}
 
+    // Legacy boolean flag for rest of app
+    const prefersDark = window.matchMedia(
+      "(prefers-color-scheme: dark)"
+    ).matches;
+    const isDark = value === "dark" || (value === "system" && prefersDark);
+    if (typeof appState.isDarkMode !== "undefined") {
+      appState.isDarkMode = isDark;
+    }
+    try {
+      localStorage.setItem("wetter_dark_mode", String(isDark));
+    } catch (e) {}
+
     const root = document.documentElement;
     const body = document.body;
 
@@ -61,11 +93,7 @@ import "../../i18n/helper.js";
 
     if (value === "system") {
       root.removeAttribute("data-theme");
-      // System-Präferenz prüfen
-      const prefersDark = window.matchMedia(
-        "(prefers-color-scheme: dark)"
-      ).matches;
-      if (prefersDark) {
+      if (isDark) {
         body.classList.add("dark-mode");
       } else {
         body.classList.add("light-mode");

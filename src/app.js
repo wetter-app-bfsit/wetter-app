@@ -17,10 +17,7 @@ class AppState {
     };
     this.isDarkMode = this._loadThemePreference();
     this.favorites = this._loadFavorites();
-    this.units = {
-      temperature: UI_CONFIG.TEMPERATURE_UNIT,
-      wind: UI_CONFIG.WIND_UNIT,
-    };
+    this.units = this._loadUnits();
     this.homeLocation = this._loadHomeLocation();
     this.backgroundRefresh = this._loadBackgroundRefresh();
   }
@@ -38,6 +35,51 @@ class AppState {
       return JSON.parse(localStorage.getItem("wetter_favorites")) || [];
     } catch (e) {
       return [];
+    }
+  }
+
+  _loadUnits() {
+    const defaults = {
+      temperature: UI_CONFIG.TEMPERATURE_UNIT,
+      wind: UI_CONFIG.WIND_UNIT,
+      visibility: "km",
+      precip: "mm",
+      pressure: "hPa",
+      timeFormat: "24",
+      aqi: "eu",
+    };
+
+    try {
+      const stored = localStorage.getItem("wetter_units");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return { ...defaults, ...parsed };
+      }
+
+      // Legacy fallback
+      const legacyTemp = localStorage.getItem("wetter_unit_temp");
+      const legacyWind = localStorage.getItem("wetter_unit_wind");
+      return {
+        ...defaults,
+        temperature: legacyTemp || defaults.temperature,
+        wind: legacyWind || defaults.wind,
+      };
+    } catch (e) {
+      return defaults;
+    }
+  }
+
+  persistUnits(units = this.units) {
+    this.units = { ...this.units, ...units };
+    try {
+      localStorage.setItem("wetter_units", JSON.stringify(this.units));
+      // keep legacy keys in sync for older UI bits
+      if (this.units.temperature)
+        localStorage.setItem("wetter_unit_temp", this.units.temperature);
+      if (this.units.wind)
+        localStorage.setItem("wetter_unit_wind", this.units.wind);
+    } catch (e) {
+      console.warn("Fehler beim Speichern der Einheiten", e);
     }
   }
 
@@ -113,7 +155,7 @@ class AppState {
     }
   }
 
-  setHomeLocation(city, coords) {
+  setHomeLocation(city, coords, meta = {}) {
     if (!city) return;
     const normalizedCoords = coords
       ? {
@@ -122,8 +164,11 @@ class AppState {
           lng: coords.lng ?? coords.lon ?? coords.longitude ?? null,
         }
       : null;
+    const country = meta.country || meta.countryCode || null;
     this.homeLocation = {
       city,
+      country,
+      countryCode: meta.countryCode || meta.country || null,
       coords: normalizedCoords,
       savedAt: Date.now(),
     };
@@ -1506,7 +1551,14 @@ function updateHomeLocationLabel() {
   const clearBtn = document.getElementById("clear-home-btn");
   if (!label) return;
   const city = appState?.homeLocation?.city;
-  label.textContent = city || "Nicht gesetzt";
+  const country = appState?.homeLocation?.country;
+  const countryCode = appState?.homeLocation?.countryCode;
+  const composed = city
+    ? country || countryCode
+      ? `${city}, ${country || countryCode}`
+      : city
+    : "Nicht gesetzt";
+  label.textContent = composed;
   const disabled = !city;
   if (useBtn) useBtn.disabled = disabled;
   if (clearBtn) clearBtn.disabled = disabled;
@@ -2876,6 +2928,7 @@ async function fetchWeatherData(lat, lon) {
   let sunriseSunsetResult = null;
   let moonPhaseResult = null;
   let airQualityResult = null;
+  let pollenResult = null;
 
   // OpenWeatherMap (optional)
   if (window.apiKeyManager && window.apiKeyManager.hasKey("openweathermap")) {
@@ -3129,6 +3182,27 @@ async function fetchWeatherData(lat, lon) {
     });
   }
 
+  // Pollen-Daten von Open-Meteo Air Quality API
+  try {
+    const { AQIAPI } = await import("./api/aqi.js");
+    const aqiApi = new AQIAPI();
+    const pollenData = await aqiApi.fetchPollenData(lat, lon);
+    if (pollenData) {
+      pollenResult = { data: pollenData, error: null };
+      sources.push({
+        id: "pollen",
+        name: "Pollen (Open-Meteo)",
+        success: true,
+        fromCache: false,
+      });
+    } else {
+      pollenResult = { data: null, error: "Keine Pollendaten verfügbar" };
+    }
+  } catch (err) {
+    console.warn("Pollen-Daten konnten nicht geladen werden:", err?.message);
+    pollenResult = { data: null, error: err?.message };
+  }
+
   if (sources.length) {
     const statusPayload = sources
       .filter((src) => src.id)
@@ -3196,6 +3270,7 @@ async function fetchWeatherData(lat, lon) {
       airQualityResult && !airQualityResult.error
         ? airQualityResult.data
         : null,
+    pollen: pollenResult && pollenResult.data ? pollenResult.data : null,
     sources,
   };
 }
@@ -3576,6 +3651,7 @@ async function loadWeatherByCoords(lat, lon, cityName, options = {}) {
         timezone: weatherData?.openMeteo?.timezone || "Europe/Berlin",
         aqi: appState.renderData?.aqi || appState.aqi || {},
         pollen: appState.renderData?.pollen || {},
+        moonPhase: appState.renderData?.moonPhase || {},
       };
 
       const healthState =
@@ -3992,9 +4068,14 @@ function initApp() {
         showError("Bitte lade zuerst einen Ort, bevor du ihn speicherst.");
         return;
       }
+      const meta = appState.renderData?.locationDetails || {};
       appState.setHomeLocation(
         appState.currentCity,
-        appState.currentCoordinates
+        appState.currentCoordinates,
+        {
+          country: meta.country,
+          countryCode: meta.countryCode,
+        }
       );
       updateHomeLocationLabel();
       showSuccess(`${appState.currentCity} als Heimatort gespeichert.`);
@@ -4138,23 +4219,11 @@ function initApp() {
   // Units selects initial state and handlers
   const tempSelect = document.getElementById("temp-unit-select");
   const windSelect = document.getElementById("wind-unit-select");
-  // Load persisted units if present
-  try {
-    const savedTemp = localStorage.getItem("wetter_unit_temp");
-    const savedWind = localStorage.getItem("wetter_unit_wind");
-    if (savedTemp) appState.units.temperature = savedTemp;
-    if (savedWind) appState.units.wind = savedWind;
-  } catch (e) {
-    /* ignore */
-  }
 
   if (tempSelect) {
     tempSelect.value = appState.units.temperature || tempSelect.value;
     tempSelect.addEventListener("change", (e) => {
-      appState.units.temperature = e.target.value;
-      try {
-        localStorage.setItem("wetter_unit_temp", e.target.value);
-      } catch (err) {}
+      appState.persistUnits({ temperature: e.target.value });
       // Rebuild renderData and re-render
       try {
         if (appState.weatherData) {
@@ -4173,10 +4242,7 @@ function initApp() {
   if (windSelect) {
     windSelect.value = appState.units.wind || windSelect.value;
     windSelect.addEventListener("change", (e) => {
-      appState.units.wind = e.target.value;
-      try {
-        localStorage.setItem("wetter_unit_wind", e.target.value);
-      } catch (err) {}
+      appState.persistUnits({ wind: e.target.value });
       try {
         if (appState.weatherData) {
           appState.renderData = buildRenderData(

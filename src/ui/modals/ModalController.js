@@ -3,7 +3,28 @@
 
   // Mapping von Sheet-IDs zu Render-Funktionen
   function renderSheetContent(sheetId) {
-    const appState = global.appState || {};
+    // Get appState with fallback to default structure
+    let appState = global.appState;
+    if (!appState && global.AppState) {
+      try {
+        appState = new global.AppState();
+        global.appState = appState;
+      } catch (e) {
+        console.warn("[ModalController] Konnte AppState nicht instanzieren", e);
+      }
+    }
+
+    if (!appState) {
+      appState = {
+        settings: {
+          theme: localStorage.getItem("wetter_theme") || "system",
+          units: JSON.parse(localStorage.getItem("wetter_units") || "{}"),
+        },
+        favorites: [],
+        homeLocation: null,
+        units: JSON.parse(localStorage.getItem("wetter_units") || "null") || {},
+      };
+    }
 
     const renderMap = {
       "sheet-settings-theme": () => {
@@ -29,6 +50,11 @@
       "sheet-settings-about": () => {
         if (global.AboutSheet?.renderAboutSheet) {
           global.AboutSheet.renderAboutSheet(appState);
+        }
+      },
+      "sheet-settings-background": () => {
+        if (global.BackgroundSettingsSheet?.renderBackgroundSheet) {
+          global.BackgroundSettingsSheet.renderBackgroundSheet(appState);
         }
       },
       "sheet-settings-privacy": () => {

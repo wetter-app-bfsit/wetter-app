@@ -543,6 +543,31 @@ body.mobile-app .app-footer {
   display: none;
 }
 
+/* Weather Cards Grid - Mobile Anpassungen */
+body.mobile-app .weather-cards-grid {
+  padding-bottom: var(--space-l);
+}
+
+body.mobile-app .weather-card-wrapper--wide {
+  min-height: auto;
+  height: auto;
+}
+
+body.mobile-app .weather-card--pollen {
+  height: auto;
+  min-height: auto;
+  padding: 12px 14px 16px;
+}
+
+body.mobile-app .weather-card__pollen-grid {
+  padding-bottom: 8px;
+}
+
+body.mobile-app .pollen-gauge svg {
+  width: 36px;
+  height: 36px;
+}
+
 body.mobile-app .toast-stack {
   top: 70px;
   left: 50%;

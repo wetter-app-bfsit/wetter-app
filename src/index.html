@@ -635,6 +635,133 @@
           <div class="bottom-sheet__body" id="settings-about-body"></div>
         </section>
 
+        <!-- Additional Settings Sheets -->
+        <section
+          id="sheet-settings-background"
+          class="bottom-sheet"
+          aria-label="Hintergrundaktualisierungen"
+        >
+          <header class="bottom-sheet__header">
+            <span class="bottom-sheet__icon">🔄</span>
+            <div>
+              <h2 class="bottom-sheet__title">Hintergrundaktualisierungen</h2>
+              <p class="bottom-sheet__subtitle">Widget-Updates und geplante Aktualisierungen.</p>
+            </div>
+            <button class="bottom-sheet__close" type="button" data-close-sheet aria-label="Schließen">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </header>
+          <div class="bottom-sheet__body" id="settings-background-body">
+            <p style="padding: 20px; color: rgba(255,255,255,0.6); text-align: center;">
+              Hintergrundaktualisierungen sind in dieser Version noch nicht verfügbar.
+            </p>
+          </div>
+        </section>
+
+        <section
+          id="sheet-settings-models"
+          class="bottom-sheet"
+          aria-label="Wettermodelle"
+        >
+          <header class="bottom-sheet__header">
+            <span class="bottom-sheet__icon">☁️</span>
+            <div>
+              <h2 class="bottom-sheet__title">Wettermodelle</h2>
+              <p class="bottom-sheet__subtitle">Open-Meteo Wettermodelle auswählen.</p>
+            </div>
+            <button class="bottom-sheet__close" type="button" data-close-sheet aria-label="Schließen">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </header>
+          <div class="bottom-sheet__body" id="settings-models-body">
+            <div class="settings-placeholder">
+              <p class="settings-placeholder__title">Bald verfügbar</p>
+              <p class="settings-placeholder__text">
+                Die Auswahl zwischen Open-Meteo Modellen befindet sich in Arbeit. Aktuell wird das Standardmodell genutzt.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="sheet-settings-export"
+          class="bottom-sheet"
+          aria-label="Daten exportieren"
+        >
+          <header class="bottom-sheet__header">
+            <span class="bottom-sheet__icon">📤</span>
+            <div>
+              <h2 class="bottom-sheet__title">Daten exportieren</h2>
+              <p class="bottom-sheet__subtitle">Einstellungen und Favoriten exportieren.</p>
+            </div>
+            <button class="bottom-sheet__close" type="button" data-close-sheet aria-label="Schließen">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </header>
+          <div class="bottom-sheet__body" id="settings-export-body">
+            <div class="settings-placeholder">
+              <p class="settings-placeholder__title">Bald verfügbar</p>
+              <p class="settings-placeholder__text">
+                Sichere deine Favoriten und Einstellungen als Datei. Wir arbeiten an einem DSGVO-konformen Export.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="sheet-settings-import"
+          class="bottom-sheet"
+          aria-label="Daten importieren"
+        >
+          <header class="bottom-sheet__header">
+            <span class="bottom-sheet__icon">📥</span>
+            <div>
+              <h2 class="bottom-sheet__title">Daten importieren</h2>
+              <p class="bottom-sheet__subtitle">Einstellungen und Favoriten importieren.</p>
+            </div>
+            <button class="bottom-sheet__close" type="button" data-close-sheet aria-label="Schließen">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </header>
+          <div class="bottom-sheet__body" id="settings-import-body">
+            <div class="settings-placeholder">
+              <p class="settings-placeholder__title">Bald verfügbar</p>
+              <p class="settings-placeholder__text">
+                Spiele gesicherte Daten wieder ein und synchronisiere mehrere Geräte. Coming soon.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="sheet-settings-discord"
+          class="bottom-sheet"
+          aria-label="Discord"
+        >
+          <header class="bottom-sheet__header">
+            <span class="bottom-sheet__icon">🎮</span>
+            <div>
+              <h2 class="bottom-sheet__title">Discord Community</h2>
+              <p class="bottom-sheet__subtitle">Tritt unserer Community bei!</p>
+            </div>
+            <button class="bottom-sheet__close" type="button" data-close-sheet aria-label="Schließen">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </header>
+          <div class="bottom-sheet__body" id="settings-discord-body">
+            <div style="padding: 20px; text-align: center;">
+              <p style="color: rgba(255,255,255,0.7); margin-bottom: 20px;">
+                Werde Teil unserer Discord-Community und tausche dich mit anderen Wetter-Enthusiasten aus!
+              </p>
+              <a href="https://discord.gg/weathermaster" target="_blank"
+                 style="display: inline-block; padding: 14px 28px; background: #5865f2; color: white;
+                        border-radius: 12px; text-decoration: none; font-weight: 500;">
+                Discord beitreten
+              </a>
+            </div>
+          </div>
+        </section>
+
         <section
           id="sheet-map-alerts"
           class="bottom-sheet"
@@ -1888,6 +2015,7 @@
     <script src="ui/health/HealthSafetyView.js"></script>
     <script src="ui/history/HistoryViewBrowser.js"></script>
     <script src="ui/settings/SettingsHome.js"></script>
+    <script src="ui/settings/BackgroundSettingsSheet.js"></script>
     <script src="ui/shared/BottomNav.js"></script>
     <script src="features.js"></script>
     <script src="app.js"></script>
