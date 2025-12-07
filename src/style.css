@@ -13753,6 +13753,14 @@ body.dark-mode .map-inspector {
     text-align: center;
   }
 
+    /* App-Sprache wählen – Text mittig ausrichten */
+.settings-info-card {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  align-items: center;
+}
+  
   .settings-info-card__icon {
     font-size: 26px;
   }
