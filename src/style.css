@@ -1980,6 +1980,15 @@ body.mobile-app #legacy-content {
   font-weight: 600;
 }
 
+/* English-Box zentrieren ohne kleinere Breite */
+.language-option:nth-of-type(2) {
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;          /* NEU: sorgt dafür, dass die Box genau so breit ist wie DE */
+  justify-content: center;
+  text-align: center;
+}
+
 /* ============================================
    LANGUAGE SELECTOR STYLES
    ============================================ */
@@ -13760,7 +13769,7 @@ body.dark-mode .map-inspector {
   text-align: center;
   align-items: center;
 }
-  
+
   .settings-info-card__icon {
     font-size: 26px;
   }
