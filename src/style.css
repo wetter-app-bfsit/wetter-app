@@ -920,7 +920,16 @@ body.dark-mode a {
   align-items: center;
   justify-content: center;
   padding: 10px 16px;
-  background: transparent;
+  /* Liquid Glass Design */
+  background: linear-gradient(
+    180deg,
+    rgba(26, 26, 26, 0.95) 0%,
+    rgba(26, 26, 26, 0.85) 50%,
+    rgba(26, 26, 26, 0.7) 75%,
+    transparent 100%
+  );
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
   position: fixed;
   top: 0;
   left: 0;
@@ -928,9 +937,12 @@ body.dark-mode a {
   width: 100%;
   max-width: 100%;
   z-index: 30;
-  transition: transform 0.35s ease;
-  padding-top: 10px;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    background 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    backdrop-filter 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
   padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* Kein ::after Element mehr - saubere Transparenz */
@@ -982,6 +994,53 @@ body.dark-mode a {
   background: transparent;
   border: none;
   border-radius: 50px;
+  cursor: pointer;
+  transition: background 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.app-bar__location::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(138, 180, 255, 0.2) 0%,
+    transparent 70%
+  );
+  transform: translate(-50%, -50%);
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.app-bar__location:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: scale(1.02);
+}
+
+.app-bar__location:active {
+  transform: scale(0.98);
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.app-bar__location:active::before {
+  width: 200px;
+  height: 200px;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.app-bar__location > * {
+  position: relative;
+  z-index: 1;
 }
 
 .app-bar__location-icon {
@@ -1034,12 +1093,55 @@ body.dark-mode a {
   font-size: 1.1rem;
   color: rgba(255, 255, 255, 0.6);
   border-radius: 50%;
-  transition: background 0.2s, color 0.2s;
+  transition: background 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.app-bar__action-btn::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(138, 180, 255, 0.3) 0%,
+    transparent 70%
+  );
+  transform: translate(-50%, -50%);
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .app-bar__action-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.95);
+  transform: scale(1.1);
+}
+
+.app-bar__action-btn:active {
+  transform: scale(0.9);
+  transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.app-bar__action-btn:active::before {
+  width: 100px;
+  height: 100px;
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.app-bar__action-btn > * {
+  position: relative;
+  z-index: 1;
 }
 
 #app-bar-settings {
@@ -1075,6 +1177,29 @@ body.dark-mode a {
   padding: calc(56px + var(--space-s)) 0 calc(64px + var(--space-m));
   overflow-y: auto;
   background: transparent;
+  position: relative;
+}
+
+/* Liquid Glass Übergang am unteren Rand */
+.app-main-views::after {
+  content: "";
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 80px);
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: linear-gradient(
+    to top,
+    rgba(26, 26, 26, 0.95) 0%,
+    rgba(26, 26, 26, 0.85) 20%,
+    rgba(26, 26, 26, 0.5) 50%,
+    rgba(26, 26, 26, 0.2) 75%,
+    transparent 100%
+  );
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  pointer-events: none;
+  z-index: 35;
 }
 
 /* Home View - volle Breite für Hero, Padding für Cards */
@@ -4754,16 +4879,22 @@ body.mobile-app #legacy-content {
   display: none;
   align-items: flex-end;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(18px);
+  background: rgba(0, 0, 0, 0);
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
   z-index: 50;
   pointer-events: none;
+  transition: background 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    backdrop-filter 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Wenn Overlay sichtbar ist, sollen Klicks gefangen werden */
 .bottom-sheet-overlay[aria-hidden="false"] {
   display: flex;
   pointer-events: auto;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(24px) saturate(1.5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
 }
 
 /* Browser setzt bei hidden das Attribut, wir erzwingen vollständiges Deaktivieren */
@@ -4776,21 +4907,34 @@ body.mobile-app #legacy-content {
   width: 100%;
   max-width: 100%;
   max-height: 85vh;
-  background: radial-gradient(
-    circle at top,
-    #121829 0,
-    #070b16 60%,
-    #050816 100%
+  /* Liquid Glass Design */
+  background: linear-gradient(
+    180deg,
+    rgba(18, 24, 40, 0.95) 0%,
+    rgba(7, 11, 22, 0.98) 50%,
+    rgba(5, 8, 22, 1) 100%
   );
-  border-radius: 20px 20px 0 0;
+  backdrop-filter: blur(40px) saturate(1.8);
+  -webkit-backdrop-filter: blur(40px) saturate(1.8);
+  border-radius: 24px 24px 0 0;
   display: none;
   padding: 20px;
   overflow: hidden;
+  transform: translateY(100%);
+  opacity: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 -8px 48px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    backdrop-filter 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .bottom-sheet--visible {
   display: flex;
   flex-direction: column;
+  transform: translateY(0);
+  opacity: 1;
 }
 
 /* Full-height sheet for location picker */
@@ -4811,11 +4955,18 @@ body.mobile-app #legacy-content {
   justify-content: center;
   color: var(--color-text-primary);
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .bottom-sheet__close:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1) rotate(90deg);
+}
+
+.bottom-sheet__close:active {
+  transform: scale(0.95) rotate(90deg);
+  transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Location Search Styles */
@@ -5022,8 +5173,25 @@ body.mobile-app #legacy-content {
   gap: 12px;
   margin-bottom: 8px;
   padding-bottom: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
+  animation: slideDownFade 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.1s both;
+  position: relative;
+}
+
+.bottom-sheet__header::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.15),
+    transparent
+  );
 }
 
 .bottom-sheet__header > div {
@@ -5059,6 +5227,29 @@ body.mobile-app #legacy-content {
   flex-direction: column;
   gap: 12px;
   padding-right: 4px;
+  animation: slideUpFade 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.15s both;
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDownFade {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Scrollbar styling for bottom sheet */
@@ -6385,17 +6576,74 @@ body.dark-mode .source-compare-card {
 }
 
 .card {
-  background: rgba(42, 42, 42, 0.95);
+  /* Liquid Glass Design */
+  background: linear-gradient(
+    135deg,
+    rgba(30, 35, 50, 0.4) 0%,
+    rgba(20, 25, 40, 0.5) 50%,
+    rgba(30, 35, 50, 0.4) 100%
+  );
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
   border-radius: 24px;
   padding: 16px 20px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    background 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    backdrop-filter 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.card:hover::before {
+  left: 100%;
 }
 
 .card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.2);
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15), inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(
+    135deg,
+    rgba(35, 40, 55, 0.5) 0%,
+    rgba(25, 30, 45, 0.6) 50%,
+    rgba(35, 40, 55, 0.5) 100%
+  );
+  backdrop-filter: blur(24px) saturate(1.8);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+}
+
+.card:active {
+  transform: translateY(-2px) scale(0.98);
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card > * {
+  position: relative;
+  z-index: 2;
 }
 
 /* Day summary card needs transparent background since .summary-card has its own */
@@ -6422,11 +6670,50 @@ body.dark-mode .source-compare-card {
      INSIGHT CARD (Einsichten)
      ======================================== */
 .insight-card {
-  background: rgba(42, 42, 42, 0.95);
+  /* Liquid Glass Design */
+  background: linear-gradient(
+    135deg,
+    rgba(30, 35, 50, 0.4) 0%,
+    rgba(20, 25, 40, 0.5) 50%,
+    rgba(30, 35, 50, 0.4) 100%
+  );
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
   border-radius: 24px;
   padding: 16px 20px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    background 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    backdrop-filter 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.insight-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.insight-card:hover::before {
+  left: 100%;
 }
 
 .insight-card__header {
@@ -6434,6 +6721,8 @@ body.dark-mode .source-compare-card {
   align-items: center;
   gap: var(--space-s);
   margin-bottom: var(--space-m);
+  position: relative;
+  z-index: 1;
 }
 
 .insight-card__icon {
@@ -6452,16 +6741,28 @@ body.dark-mode .source-compare-card {
   color: rgba(255, 255, 255, 0.85);
   font-size: 0.95rem;
   line-height: 1.5;
-}
-
-/* Insight Card hover effect */
-.insight-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  z-index: 1;
 }
 
 .insight-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.2);
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15), inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(
+    135deg,
+    rgba(35, 40, 55, 0.5) 0%,
+    rgba(25, 30, 45, 0.6) 50%,
+    rgba(35, 40, 55, 0.5) 100%
+  );
+  backdrop-filter: blur(24px) saturate(1.8);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+}
+
+.insight-card:active {
+  transform: translateY(-2px) scale(0.98);
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Light Mode */
@@ -6479,18 +6780,74 @@ body.dark .insight-card__text {
      ======================================== */
 /* Standard: Dark Mode Look */
 .summary-card {
-  background: rgba(42, 42, 42, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  /* Liquid Glass Design */
+  background: linear-gradient(
+    135deg,
+    rgba(30, 35, 50, 0.4) 0%,
+    rgba(20, 25, 40, 0.5) 50%,
+    rgba(30, 35, 50, 0.4) 100%
+  );
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 24px;
   overflow: hidden;
   color: #f3f6fa;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    background 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    backdrop-filter 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.summary-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.summary-card:hover::before {
+  left: 100%;
 }
 
 .summary-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.2);
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15), inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(
+    135deg,
+    rgba(35, 40, 55, 0.5) 0%,
+    rgba(25, 30, 45, 0.6) 50%,
+    rgba(35, 40, 55, 0.5) 100%
+  );
+  backdrop-filter: blur(24px) saturate(1.8);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+}
+
+.summary-card:active {
+  transform: translateY(-2px) scale(0.98);
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.summary-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* Light Mode */
@@ -6533,8 +6890,13 @@ body.light .summary-card {
 
 .summary-card__chevron {
   font-size: 1.3rem;
-  transition: transform 0.3s ease;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   opacity: 0.7;
+}
+
+.summary-card__header:hover .summary-card__chevron {
+  opacity: 1;
 }
 
 .summary-card[data-expanded="false"] .summary-card__chevron {
@@ -6544,10 +6906,21 @@ body.light .summary-card {
 .summary-card__content {
   padding: 0 var(--space-l) var(--space-l);
   display: block;
+  max-height: 1000px;
+  opacity: 1;
+  overflow: hidden;
+  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    padding 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .summary-card[data-expanded="false"] .summary-card__content {
-  display: none;
+  max-height: 0;
+  opacity: 0;
+  padding: 0 var(--space-l);
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .summary-card__intro {
@@ -6621,17 +6994,74 @@ body.light .summary-card__list li::before {
      HOURLY CARD (Stündliche Vorhersage)
      ======================================== */
 .hourly-card {
-  background: rgba(42, 42, 42, 0.95);
+  /* Liquid Glass Design */
+  background: linear-gradient(
+    135deg,
+    rgba(30, 35, 50, 0.4) 0%,
+    rgba(20, 25, 40, 0.5) 50%,
+    rgba(30, 35, 50, 0.4) 100%
+  );
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
   border-radius: 24px;
   padding: 16px 20px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    background 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    backdrop-filter 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.hourly-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hourly-card:hover::before {
+  left: 100%;
 }
 
 .hourly-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.2);
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15), inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(
+    135deg,
+    rgba(35, 40, 55, 0.5) 0%,
+    rgba(25, 30, 45, 0.6) 50%,
+    rgba(35, 40, 55, 0.5) 100%
+  );
+  backdrop-filter: blur(24px) saturate(1.8);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+}
+
+.hourly-card:active {
+  transform: translateY(-2px) scale(0.98);
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hourly-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .hourly-card__header {
@@ -6678,6 +7108,74 @@ body.light .summary-card__list li::before {
   gap: var(--space-xs);
   flex: 0 0 calc(33.333% - (2 * var(--space-m) / 3));
   scroll-snap-align: start;
+  /* Liquid Glass Design */
+  background: linear-gradient(
+    135deg,
+    rgba(35, 40, 55, 0.3) 0%,
+    rgba(25, 30, 45, 0.4) 50%,
+    rgba(35, 40, 55, 0.3) 100%
+  );
+  backdrop-filter: blur(10px) saturate(1.3);
+  -webkit-backdrop-filter: blur(10px) saturate(1.3);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 10px 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    background 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    backdrop-filter 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.hourly-item::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transition: left 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hourly-item:hover::before {
+  left: 100%;
+}
+
+.hourly-item:hover {
+  transform: scale(1.08) translateY(-2px);
+  background: linear-gradient(
+    135deg,
+    rgba(45, 50, 65, 0.4) 0%,
+    rgba(35, 40, 55, 0.5) 50%,
+    rgba(45, 50, 65, 0.4) 100%
+  );
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(14px) saturate(1.5);
+  -webkit-backdrop-filter: blur(14px) saturate(1.5);
+}
+
+.hourly-item:active {
+  transform: scale(1.02) translateY(-1px);
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hourly-item > * {
+  position: relative;
+  z-index: 1;
 }
 
 .hourly-item__temp {
@@ -6712,17 +7210,74 @@ body.light .summary-card__list li::before {
      DAILY CARD (Mehrtägige Vorhersage)
      ======================================== */
 .daily-card {
-  background: rgba(42, 42, 42, 0.95);
+  /* Liquid Glass Design */
+  background: linear-gradient(
+    135deg,
+    rgba(30, 35, 50, 0.4) 0%,
+    rgba(20, 25, 40, 0.5) 50%,
+    rgba(30, 35, 50, 0.4) 100%
+  );
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
   border-radius: 24px;
   padding: 16px 20px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    background 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    backdrop-filter 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.daily-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.daily-card:hover::before {
+  left: 100%;
 }
 
 .daily-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.2);
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15), inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(
+    135deg,
+    rgba(35, 40, 55, 0.5) 0%,
+    rgba(25, 30, 45, 0.6) 50%,
+    rgba(35, 40, 55, 0.5) 100%
+  );
+  backdrop-filter: blur(24px) saturate(1.8);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+}
+
+.daily-card:active {
+  transform: translateY(-2px) scale(0.98);
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.daily-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .daily-card__header {
@@ -6757,21 +7312,76 @@ body.light .summary-card__list li::before {
   gap: 6px;
   min-width: 64px;
   padding: var(--space-m) var(--space-s);
-  background: rgba(60, 60, 60, 0.6);
-  border: none;
+  /* Liquid Glass Design */
+  background: linear-gradient(
+    135deg,
+    rgba(40, 45, 60, 0.4) 0%,
+    rgba(30, 35, 50, 0.5) 50%,
+    rgba(40, 45, 60, 0.4) 100%
+  );
+  backdrop-filter: blur(12px) saturate(1.3);
+  -webkit-backdrop-filter: blur(12px) saturate(1.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
   color: inherit;
   cursor: pointer;
-  transition: background 0.2s, transform 0.2s;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: background 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    backdrop-filter 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.daily-item::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  transform: translate(-50%, -50%);
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .daily-item:hover {
-  background: rgba(80, 80, 80, 0.8);
-  transform: translateY(-2px);
+  background: linear-gradient(
+    135deg,
+    rgba(50, 55, 70, 0.5) 0%,
+    rgba(40, 45, 60, 0.6) 50%,
+    rgba(50, 55, 70, 0.5) 100%
+  );
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(16px) saturate(1.6);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
 }
 
 .daily-item:active {
-  transform: scale(0.97);
+  transform: translateY(-1px) scale(0.98);
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.daily-item:active::before {
+  width: 200px;
+  height: 200px;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.daily-item > * {
+  position: relative;
+  z-index: 1;
 }
 
 .daily-item__max {
@@ -13331,16 +13941,29 @@ body.dark-mode .map-inspector {
   width: 100%;
   height: 100%;
   padding: 14px;
-  background: rgba(42, 42, 42, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  /* Liquid Glass Design */
+  background: linear-gradient(
+    135deg,
+    rgba(30, 35, 50, 0.4) 0%,
+    rgba(20, 25, 40, 0.5) 50%,
+    rgba(30, 35, 50, 0.4) 100%
+  );
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 24px;
   color: #fff;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    background 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    backdrop-filter 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: left;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.1);
 }
 
 /* Wide cards should auto-size to content */
@@ -13348,14 +13971,78 @@ body.dark-mode .map-inspector {
   height: auto;
 }
 
+.weather-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.15),
+    transparent
+  );
+  transition: left 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.weather-card::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(138, 180, 255, 0.2) 0%,
+    transparent 70%
+  );
+  transform: translate(-50%, -50%);
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.weather-card:hover::before {
+  left: 100%;
+}
+
 .weather-card:hover {
-  background: rgba(50, 50, 50, 0.98);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 20px 56px rgba(0, 0, 0, 0.45), 0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15), inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(
+    135deg,
+    rgba(35, 40, 55, 0.5) 0%,
+    rgba(25, 30, 45, 0.6) 50%,
+    rgba(35, 40, 55, 0.5) 100%
+  );
+  backdrop-filter: blur(24px) saturate(1.8);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
 }
 
 .weather-card:active {
-  transform: scale(0.98);
+  transform: translateY(-2px) scale(0.98);
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.weather-card:active::after {
+  width: 300px;
+  height: 300px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.weather-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .weather-card__header {
@@ -13858,10 +14545,97 @@ body.dark-mode .map-inspector {
    ======================================== */
 
 .detail-card {
-  background: rgba(30, 40, 60, 0.8);
+  /* Liquid Glass Design */
+  background: linear-gradient(
+    135deg,
+    rgba(25, 35, 55, 0.5) 0%,
+    rgba(20, 30, 50, 0.6) 50%,
+    rgba(25, 35, 55, 0.5) 100%
+  );
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
   border-radius: var(--radius-m);
   padding: var(--space-l);
   margin-bottom: var(--space-m);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    background 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    backdrop-filter 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+  position: relative;
+  overflow: hidden;
+}
+
+.detail-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.08),
+    transparent
+  );
+  transition: left 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.detail-card:hover::before {
+  left: 100%;
+}
+
+.detail-card:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(30, 40, 60, 0.6) 0%,
+    rgba(25, 35, 55, 0.7) 50%,
+    rgba(30, 40, 60, 0.6) 100%
+  );
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(24px) saturate(1.8);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+}
+
+.detail-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.detail-card:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.detail-card:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.detail-card:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.detail-card:nth-child(4) {
+  animation-delay: 0.25s;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .detail-card h3 {
