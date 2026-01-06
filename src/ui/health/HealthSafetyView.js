@@ -1053,15 +1053,33 @@
             const label = getFactorLabel(key);
             const color = getScoreColor(data.score);
             const weight = Math.round(data.weight * 100);
+            // Robust temperature formatting: always 1 decimal, strip float artifacts
+            let valueDisplay = data.value;
+            if (key === "temperature") {
+              let num = Number(data.value);
+              if (!isNaN(num)) {
+                // Fix float artifacts, always 1 decimal
+                valueDisplay = (Math.round(num * 10) / 10).toFixed(1) + "°C";
+              }
+            }
             return `
               <div class="factor-detail-row">
                 <span class="factor-detail-icon">${icon}</span>
                 <span class="factor-detail-label">${label}</span>
                 <div class="factor-detail-bar">
-                  <div class="factor-detail-bar__fill" style="width:${data.score}%;background:${color}"></div>
+                  <div class="factor-detail-bar__fill" style="width:${
+                    data.score
+                  }%;background:${color}"></div>
                 </div>
-                <span class="factor-detail-score" style="color:${color}">${data.score}</span>
+                <span class="factor-detail-score" style="color:${color}">${
+              data.score
+            }</span>
                 <span class="factor-detail-weight">(${weight}%)</span>
+                ${
+                  key === "temperature"
+                    ? `<span class="factor-detail-temp">${valueDisplay}</span>`
+                    : ""
+                }
               </div>
             `;
           })

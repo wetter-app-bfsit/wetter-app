@@ -846,21 +846,26 @@ async function initAppShell(appState) {
       renderLayerList();
     }
 
-    // Einfache Timeline-Interaktion für Phase 1 (ohne echte Frames)
+    // Radar View - Timeline and Map Controls
     const playBtn = document.getElementById("map-timeline-play");
     const prevBtn = document.getElementById("map-timeline-prev");
     const nextBtn = document.getElementById("map-timeline-next");
     const slider = document.getElementById("map-timeline-slider");
+    const zoomInBtn = document.getElementById("map-zoom-in");
+    const zoomOutBtn = document.getElementById("map-zoom-out");
+    const locateBtn = document.getElementById("map-locate");
 
+    // Timeline controls
     if (playBtn && window.RadarController) {
       let isPlaying = false;
       playBtn.addEventListener("click", () => {
+        const icon = playBtn.querySelector(".material-symbols-outlined");
         if (!isPlaying) {
           window.RadarController.play();
-          playBtn.textContent = "⏸";
+          if (icon) icon.textContent = "pause";
         } else {
           window.RadarController.pause();
-          playBtn.textContent = "▶";
+          if (icon) icon.textContent = "play_arrow";
         }
         isPlaying = !isPlaying;
       });
@@ -875,6 +880,51 @@ async function initAppShell(appState) {
     if (slider && window.RadarController) {
       slider.addEventListener("input", (event) => {
         window.RadarController.seek(event.target.value);
+      });
+    }
+
+    // Zoom controls
+    if (zoomInBtn) {
+      zoomInBtn.addEventListener("click", () => {
+        if (window.MapContainer && window.MapContainer.getMap) {
+          const map = window.MapContainer.getMap();
+          if (map && map.zoomIn) map.zoomIn();
+        } else if (window._radarMap && window._radarMap.map) {
+          window._radarMap.map.zoomIn();
+        }
+      });
+    }
+
+    if (zoomOutBtn) {
+      zoomOutBtn.addEventListener("click", () => {
+        if (window.MapContainer && window.MapContainer.getMap) {
+          const map = window.MapContainer.getMap();
+          if (map && map.zoomOut) map.zoomOut();
+        } else if (window._radarMap && window._radarMap.map) {
+          window._radarMap.map.zoomOut();
+        }
+      });
+    }
+
+    // Locate user button
+    if (locateBtn) {
+      locateBtn.addEventListener("click", () => {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const { latitude, longitude } = position.coords;
+              if (window.MapContainer && window.MapContainer.getMap) {
+                const map = window.MapContainer.getMap();
+                if (map && map.setView) map.setView([latitude, longitude], 10);
+              } else if (window._radarMap && window._radarMap.map) {
+                window._radarMap.map.setView([latitude, longitude], 10);
+              }
+            },
+            (error) => {
+              console.warn("Geolocation error:", error);
+            }
+          );
+        }
       });
     }
   } catch (e) {

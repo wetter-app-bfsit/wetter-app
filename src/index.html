@@ -96,72 +96,117 @@
           </div>
         </section>
 
-        <section data-view="radar" hidden aria-label="Kartenansicht">
-          <div class="map-view">
-            <div class="map-view__header">
-              <div class="map-view__title-group">
-                <h2 class="map-view__title">Karten & Radar</h2>
-                <p class="map-view__subtitle">Niederschlag, Wolken und Wind in deiner Umgebung.</p>
+        <section data-view="radar" hidden aria-label="Kartenansicht" class="radar-view">
+          <!-- Fullscreen Map Container -->
+          <div class="radar-view__map-wrapper">
+            <div id="map-container" class="radar-view__map" aria-label="Wetterkarte">
+              <!-- Map will be initialized here by Leaflet -->
+              <div class="radar-view__map-placeholder">
+                <span class="material-symbols-outlined">map</span>
+                <p>Karte wird geladen...</p>
+              </div>
+            </div>
+
+            <!-- Floating Top Controls -->
+            <div class="radar-view__top-controls">
+              <div class="radar-view__header-info">
+                <h2 class="radar-view__title">Karten & Radar</h2>
+                <p class="radar-view__subtitle">Niederschlag, Wolken und Wind</p>
               </div>
               <button
                 id="map-layer-toggle"
-                class="chip-button"
+                class="radar-view__layer-btn"
                 type="button"
                 data-bottom-sheet-target="sheet-map-layers"
+                aria-label="Layer auswählen"
               >
-                🌈 Layer
+                <span class="material-symbols-outlined">layers</span>
+                <span>Layer</span>
               </button>
             </div>
 
-            <div id="map-container" class="map-container" aria-label="Wetterkarte"></div>
-
-            <div class="map-legend-strip" aria-label="Legende der Kartendaten">
-              <span class="map-legend__item"><span class="map-legend__swatch map-legend__swatch--rain"></span>Regen</span>
-              <span class="map-legend__item"><span class="map-legend__swatch map-legend__swatch--snow"></span>Schnee</span>
-              <span class="map-legend__item"><span class="map-legend__swatch map-legend__swatch--temp"></span>Temperatur</span>
-              <span class="map-legend__item"><span class="map-legend__swatch map-legend__swatch--wind"></span>Wind</span>
-              <span class="map-legend__item"><span class="map-legend__swatch map-legend__swatch--clouds"></span>Wolken</span>
-              <span class="map-legend__item"><span class="map-legend__swatch map-legend__swatch--aqi"></span>AQI</span>
+            <!-- Floating Side Controls -->
+            <div class="radar-view__side-controls">
+              <button
+                id="map-zoom-in"
+                class="radar-view__control-btn"
+                type="button"
+                aria-label="Hineinzoomen"
+              >
+                <span class="material-symbols-outlined">add</span>
+              </button>
+              <button
+                id="map-zoom-out"
+                class="radar-view__control-btn"
+                type="button"
+                aria-label="Herauszoomen"
+              >
+                <span class="material-symbols-outlined">remove</span>
+              </button>
+              <div class="radar-view__control-divider"></div>
+              <button
+                id="map-locate"
+                class="radar-view__control-btn"
+                type="button"
+                aria-label="Auf meinen Standort zentrieren"
+              >
+                <span class="material-symbols-outlined">my_location</span>
+              </button>
             </div>
 
-            <div class="map-timeline" aria-label="Zeitverlauf der Karte">
+            <!-- Legend Strip (Floating Bottom-Left) -->
+            <div class="radar-view__legend" aria-label="Legende der Kartendaten">
+              <span class="radar-view__legend-item"><span class="radar-view__legend-swatch radar-view__legend-swatch--rain"></span>Regen</span>
+              <span class="radar-view__legend-item"><span class="radar-view__legend-swatch radar-view__legend-swatch--snow"></span>Schnee</span>
+              <span class="radar-view__legend-item"><span class="radar-view__legend-swatch radar-view__legend-swatch--temp"></span>Temp</span>
+              <span class="radar-view__legend-item"><span class="radar-view__legend-swatch radar-view__legend-swatch--wind"></span>Wind</span>
+              <span class="radar-view__legend-item"><span class="radar-view__legend-swatch radar-view__legend-swatch--clouds"></span>Wolken</span>
+            </div>
+          </div>
+
+          <!-- Bottom Timeline Controls -->
+          <div class="radar-view__timeline" aria-label="Zeitverlauf der Karte">
+            <div class="radar-view__timeline-controls">
               <button
                 id="map-timeline-prev"
-                class="icon-button icon-button--ghost"
+                class="radar-view__timeline-btn"
                 type="button"
                 aria-label="Einen Schritt zurück"
               >
-                ◀
+                <span class="material-symbols-outlined">skip_previous</span>
               </button>
               <button
                 id="map-timeline-play"
-                class="icon-button icon-button--primary"
+                class="radar-view__timeline-btn radar-view__timeline-btn--primary"
                 type="button"
                 aria-label="Animation abspielen oder pausieren"
               >
-                ▶
+                <span class="material-symbols-outlined">play_arrow</span>
               </button>
               <button
                 id="map-timeline-next"
-                class="icon-button icon-button--ghost"
+                class="radar-view__timeline-btn"
                 type="button"
                 aria-label="Einen Schritt vor"
               >
-                ▶
+                <span class="material-symbols-outlined">skip_next</span>
               </button>
+            </div>
 
+            <div class="radar-view__timeline-slider-wrapper">
               <input
                 id="map-timeline-slider"
-                class="map-timeline__slider"
+                class="radar-view__timeline-slider"
                 type="range"
                 min="0"
-                max="0"
-                value="0"
+                max="12"
+                value="6"
                 step="1"
                 aria-label="Zeitschritte der Radar-Frames"
               />
-              <span id="map-timeline-label" class="map-timeline__label" aria-live="polite">Live</span>
             </div>
+
+            <span id="map-timeline-label" class="radar-view__timeline-label" aria-live="polite">Live</span>
           </div>
         </section>
 
@@ -957,52 +1002,7 @@
           ></div>
         </section>
 
-        <section class="grid map-alerts-grid" aria-label="Radar und Warnungen">
-          <article class="surface-card map-panel">
-            <div class="section-headline">
-              <div>
-                <p class="eyebrow">Radar & Layers</p>
-                <h2>Kartenansicht</h2>
-              </div>
-              <div
-                id="map-layer-context"
-                class="map-layer-context"
-                data-placeholder="Aktive Layer werden nach dem Laden angezeigt"
-              ></div>
-            </div>
-            <div class="map-body">
-              <div
-                id="weather-map"
-                class="weather-map"
-                data-placeholder="Karte wird nach der ersten Ortssuche aktiviert"
-                role="img"
-                aria-label="Interaktive Wetterkarte"
-              ></div>
-              <div class="map-controls-grid">
-                <div
-                  id="map-radar-controls"
-                  class="map-radar-controls"
-                  data-placeholder="Radar-Layer &amp; Zeitleiste erscheinen hier"
-                ></div>
-                <div
-                  id="map-quick-actions"
-                  class="map-quick-actions"
-                  data-placeholder="Schnellaktionen folgen nach dem Laden"
-                ></div>
-                <div
-                  id="map-overlay-legend"
-                  class="map-overlay-legend"
-                  data-placeholder="Legende der aktiven Overlays"
-                ></div>
-              </div>
-            </div>
-            <div
-              id="map-inspector"
-              class="map-inspector"
-              data-placeholder="Fahre über die Karte, um Live-Daten je Ort zu sehen"
-              aria-live="polite"
-            ></div>
-          </article>
+        <section class="grid alerts-grid" aria-label="Warnungen">
           <article
             class="surface-card alerts-panel"
             aria-labelledby="alerts-heading"
@@ -1014,36 +1014,6 @@
               </div>
             </div>
             <div id="weather-alerts" aria-live="polite"></div>
-          </article>
-        </section>
-
-        <section
-          class="grid history-analytics-grid"
-          aria-label="Historie und Nutzung"
-        >
-          <article
-            class="surface-card historical-panel"
-            aria-labelledby="history-heading"
-          >
-            <div class="section-headline">
-              <div>
-                <p class="eyebrow">Rückblick</p>
-                <h2 id="history-heading">Historische Daten</h2>
-              </div>
-            </div>
-            <div id="historical-chart" class="historical-shell"></div>
-          </article>
-          <article
-            class="surface-card analytics-panel-container"
-            aria-labelledby="analytics-heading"
-          >
-            <div class="section-headline">
-              <div>
-                <p class="eyebrow">Nutzungsdaten</p>
-                <h2 id="analytics-heading">Analytics</h2>
-              </div>
-            </div>
-            <div id="analytics-panel" class="analytics-shell"></div>
           </article>
         </section>
 
