@@ -1,15 +1,4 @@
 /* Fix: Entfernt fixierte, geblurrte Balken am unteren Rand (Blur-Balken über Navigation) */
-.fixed-blur-bar,
-.blur-bar,
-body > div[style*="bottom: 0"],
-body > div[style*="position: fixed"],
-.bottom-blur-bar {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  border: none !important;
-}
 /* Haupt-CSS-Datei - Design und Layout */
 /* Definiert Farben, Layouts und Stilelemente für Calchas */
 
@@ -201,18 +190,7 @@ body.dark-mode a {
   -webkit-backdrop-filter: none !important;
 }
 
-/* Entfernt alle Blur- und Schatteneffekte von fixierten/flexiblen Balken am unteren Rand */
-.fixed-blur-bar,
-.blur-bar,
-body > div[style*="bottom: 0"],
-body > div[style*="position: fixed"],
-.bottom-blur-bar {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  border: none !important;
-}
+/* Entfernt alle Blur- und Schatteneffekte von der Bottom-Navigation */
 
 [data-theme="light"] .bottom-nav__button {
   color: rgba(30, 41, 59, 0.55);
