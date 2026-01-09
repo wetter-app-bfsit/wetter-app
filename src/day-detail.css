@@ -1,9 +1,9 @@
 .detail-theme {
   color-scheme: dark;
-  --detail-bg: #130d09;
-  --detail-panel: #1c120e;
-  --detail-pill: #26170f;
-  --detail-card: #1f140f;
+  --detail-bg: #181e24;
+  --detail-panel: #232c36;
+  --detail-pill: #232c36;
+  --detail-card: #232c36;
   --detail-border: rgba(255, 255, 255, 0.08);
   --detail-accent: #f7b267;
   --detail-muted: rgba(255, 255, 255, 0.7);
@@ -25,23 +25,25 @@
   --detail-muted: rgba(26, 26, 46, 0.7);
   color: #1a1a2e;
   background: linear-gradient(
-      circle at top,
-      rgba(247, 178, 103, 0.04),
-      transparent 45%
-    ),
-    var(--detail-bg);
+      to bottom,
+      var(--sky-top) 0%,
+      var(--sky-mid) 60%,
+      var(--sky-bottom) 85%,
+      #181e24 100%
+    );
 }
 
 .detail-theme {
   margin: 0;
   min-height: 100vh;
   font-family: var(--detail-font);
-  background: radial-gradient(
-      circle at top,
-      rgba(247, 178, 103, 0.08),
-      transparent 45%
-    ),
-    var(--detail-bg);
+  background: linear-gradient(
+      to bottom,
+      var(--sky-top) 0%,
+      var(--sky-mid) 60%,
+      var(--sky-bottom) 85%,
+      #181e24 100%
+    );
   color: #f8f0e3;
 }
 

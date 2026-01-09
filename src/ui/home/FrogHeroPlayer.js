@@ -38,8 +38,53 @@
     night_hazy: { top: "#2A3040", mid: "#363C50", bottom: "#424860" },
   };
 
-  // Karten-Hintergrundfarbe (für unteren Übergang)
-  const CARD_BG_COLOR = "#0f1729";
+  // Bodenfarben der Fields-Bilder (extrahiert aus den tatsächlichen Bildern)
+  // Diese sind die dunklen Farben am unteren Rand der Fields
+  const GROUND_COLORS = {
+    // Morning - Morgenboden (lila-grau Töne wie im Bild)
+    morning_sunny: "#4a4555",
+    morning_cloudy: "#4a4555",
+    morning_rainy: "#3a3545",
+    morning_snowy: "#5a5565",
+    morning_hazy: "#4a4555",
+
+    // Day - Tagesboden (grün-braun)
+    day_sunny: "#5a6555",
+    day_cloudy: "#4a5045",
+    day_rainy: "#3a4038",
+    day_snowy: "#6a7065",
+    day_hazy: "#4a5045",
+
+    // Sunset - Abendboden (lila-rosa wie im Bild)
+    sunset_sunny: "#4a3845",
+    sunset_cloudy: "#4a3845",
+    sunset_rainy: "#3a2835",
+    sunset_snowy: "#5a4855",
+    sunset_hazy: "#4a3845",
+
+    // Night - Nachtboden (dunkel lila)
+    night_sunny: "#2a2535",
+    night_cloudy: "#2a2535",
+    night_rainy: "#1a1525",
+    night_snowy: "#3a3545",
+    night_hazy: "#2a2535",
+  };
+
+  // Funktion um Bodenfarbe zu bekommen
+  function getGroundColor(tod, cond) {
+    const key = `${tod}_${cond}`;
+    return GROUND_COLORS[key] || GROUND_COLORS.day_cloudy;
+  }
+
+  // Funktion um eine dunklere Version einer Farbe zu erstellen
+  function darkenColor(hex, factor = 0.7) {
+    const r = Math.round(parseInt(hex.slice(1, 3), 16) * factor);
+    const g = Math.round(parseInt(hex.slice(3, 5), 16) * factor);
+    const b = Math.round(parseInt(hex.slice(5, 7), 16) * factor);
+    return `#${r.toString(16).padStart(2, "0")}${g
+      .toString(16)
+      .padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+  }
 
   function getTimeOfDay(current, timezone) {
     if (!current) return "day";
@@ -141,6 +186,8 @@
 
   function applyDynamicGradients(tod, cond) {
     const colors = getSkyColors(tod, cond);
+    const groundColor = getGroundColor(tod, cond);
+    const pageBgColor = darkenColor(groundColor, 0.6); // Dunklere Version der Bodenfarbe
     const pond = document.getElementById("frog-hero-pond");
     const appShell = document.querySelector(".app-shell");
     const weatherHero = document.querySelector(".weather-hero");
@@ -149,18 +196,11 @@
 
     if (!pond) return;
 
-    // Erstelle dynamischen oberen Gradient - sanfter Übergang von Himmelsfarbe zum Fields-Bild
-    // Sehr langer, weicher Übergang für nahtlose Verschmelzung
-    const topGradient = `linear-gradient(to bottom,
-      ${colors.top} 0%,
-      ${colors.top} 40%,
-      ${hexToRgba(colors.top, 0.85)} 55%,
-      ${hexToRgba(colors.top, 0.6)} 70%,
-      ${hexToRgba(colors.top, 0.3)} 85%,
-      transparent 100%)`;
+    // Top-Gradient deaktiviert - verdunkelt das Bild nicht mehr
+    const topGradient = `none`;
 
-    // Entferne den unteren Balken-Gradienten komplett (transparent)
-    const bottomGradient = `linear-gradient(to top, transparent 0%, transparent 100%)`;
+    // Bottom-Gradient deaktiviert - Übergang erfolgt durch .fields-bg-transition
+    const bottomGradient = `none`;
 
     // App-Bar Gradient - nahtloser Übergang von Himmelfarbe zu transparent
     const appBarGradient = `linear-gradient(to bottom,
@@ -178,12 +218,18 @@
     );
     document.documentElement.style.setProperty("--sky-mid", colors.mid);
     document.documentElement.style.setProperty("--sky-bottom", colors.bottom);
+    document.documentElement.style.setProperty(
+      "--sky-bottom-rgb",
+      hexToRgb(colors.bottom)
+    );
+    document.documentElement.style.setProperty("--ground-color", groundColor);
+    document.documentElement.style.setProperty("--page-bg", pageBgColor);
     document.documentElement.style.setProperty("--top-gradient", topGradient);
     document.documentElement.style.setProperty(
       "--bottom-gradient",
       bottomGradient
     );
-    document.documentElement.style.setProperty("--card-bg", CARD_BG_COLOR);
+    document.documentElement.style.setProperty("--card-bg", pageBgColor);
     document.documentElement.style.setProperty(
       "--app-bar-gradient",
       appBarGradient
@@ -194,19 +240,22 @@
     pond.style.setProperty("--sky-top-rgb", hexToRgb(colors.top));
     pond.style.setProperty("--sky-mid", colors.mid);
     pond.style.setProperty("--sky-bottom", colors.bottom);
+    pond.style.setProperty("--sky-bottom-rgb", hexToRgb(colors.bottom));
+    pond.style.setProperty("--ground-color", groundColor);
+    pond.style.setProperty("--page-bg", pageBgColor);
     pond.style.setProperty("--top-gradient", topGradient);
     pond.style.setProperty("--bottom-gradient", bottomGradient);
-    pond.style.setProperty("--card-bg", CARD_BG_COLOR);
+    pond.style.setProperty("--card-bg", pageBgColor);
 
-    // HTML und Body bekommen die Himmelfarbe als Basis-Hintergrund
-    document.documentElement.style.background = colors.top;
+    // HTML und Body bekommen die dunklere Bodenfarbe als Basis-Hintergrund
+    document.documentElement.style.background = pageBgColor;
     if (body) {
-      body.style.background = colors.top;
+      body.style.background = pageBgColor;
     }
 
-    // App-shell bekommt den Basis-Hintergrund (Himmelfarbe oben)
+    // App-shell bekommt den dunkleren Hintergrund
     if (appShell) {
-      appShell.style.background = colors.top;
+      appShell.style.background = pageBgColor;
     }
 
     // App-Bar bekommt die Himmelsfarbe als Hintergrund
