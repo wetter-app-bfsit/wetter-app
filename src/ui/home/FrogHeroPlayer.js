@@ -263,9 +263,10 @@
       appBar.style.background = colors.top;
     }
 
-    // Weather-hero bekommt die Himmelsfarbe als Hintergrund
+    // Weather-hero bekommt die Himmelsfarbe als Hintergrund, aber unten einen Übergang zum Seitenhintergrund
     if (weatherHero) {
-      weatherHero.style.background = colors.top;
+      // Verlauf: Oben Himmelsfarbe (bis 25%), dann sanfter Übergang zur Seitenhintergrundfarbe
+      weatherHero.style.background = `linear-gradient(to bottom, ${colors.top} 0%, ${colors.top} 25%, ${pageBgColor} 100%)`;
     }
 
     // Weather-hero Header bekommt die Himmelsfarbe als Hintergrund (Bereich über dem Bild)
