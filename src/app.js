@@ -634,14 +634,14 @@ async function initAppShell(appState) {
   }
 
   // Ensure the stored or system theme is applied on startup
-    if (window.ThemeSelectorSheet && window.ThemeSelectorSheet.initTheme) {
-      try {
-        window.ThemeSelectorSheet.initTheme();
-      } catch (e) {
-        console.warn("ThemeSelectorSheet Init fehlgeschlagen", e);
-      }
+  if (window.ThemeSelectorSheet && window.ThemeSelectorSheet.initTheme) {
+    try {
+      window.ThemeSelectorSheet.initTheme();
+    } catch (e) {
+      console.warn("ThemeSelectorSheet Init fehlgeschlagen", e);
     }
-    
+  }
+
   if (window.UnitsSelectorSheet && window.UnitsSelectorSheet.renderUnitsSheet) {
     try {
       window.UnitsSelectorSheet.renderUnitsSheet(appState);
@@ -735,7 +735,7 @@ async function initAppShell(appState) {
 
   // Radar / Kartenansicht mit Leaflet-basierter MapComponent vorbereiten (MapContainer + Layers + Timeline-Stub)
   try {
-      if (window.MapContainer && typeof window.MapContainer.init === "function") {
+    if (window.MapContainer && typeof window.MapContainer.init === "function") {
       const center =
         appState && appState.currentCoordinates
           ? [
@@ -744,33 +744,58 @@ async function initAppShell(appState) {
             ]
           : [52.52, 13.405];
 
-
+      /*
       window.MapContainer.init({
         domSelector: "#map-container",
         center,
         zoom: 7,
       });
+      */
     }
-
 
     // Optionale MapComponent-Integration (falls vorhanden)
     if (window.MapComponent) {
       const map = new window.MapComponent("map-container");
+      window.appMapInstance = map; // Expose globally for GlobalMapLayerManager
       map.render();
+
+      // FIX: Monitor visibility changes to invalidate map size
+      const radarSection = document.querySelector('[data-view="radar"]');
+      if (radarSection) {
+        const observer = new MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+            if (
+              mutation.type === "attributes" &&
+              mutation.attributeName === "hidden"
+            ) {
+              if (!radarSection.hidden) {
+                console.log("Radar view visible, invalidating map size");
+                map.invalidate();
+                /*
+                   if (appState && appState.currentCoordinates) {
+                       map.setLocation(appState.currentCoordinates.lat, appState.currentCoordinates.lon, appState.currentCity || '');
+                   }
+                   */
+              }
+            }
+          });
+        });
+        observer.observe(radarSection, { attributes: true });
+      }
 
       // Dispatch current location if available
       if (appState && appState.currentCoordinates && appState.currentCity) {
         try {
-          const locationEvent = new CustomEvent('app:locationChanged', {
+          const locationEvent = new CustomEvent("app:locationChanged", {
             detail: {
               lat: appState.currentCoordinates.lat,
               lon: appState.currentCoordinates.lon,
-              label: appState.currentCity
-            }
+              label: appState.currentCity,
+            },
           });
           document.dispatchEvent(locationEvent);
         } catch (e) {
-          console.warn('Failed to dispatch initial location event:', e);
+          console.warn("Failed to dispatch initial location event:", e);
         }
       }
 
@@ -786,7 +811,6 @@ async function initAppShell(appState) {
         });
       }
     }
-
 
     if (window.MapLayerManager) {
       window.MapLayerManager.init(window.MapContainer);
@@ -1002,7 +1026,11 @@ async function initAppShell(appState) {
 
       // Handle fullscreen change events
       const handleFullscreenChange = () => {
-        isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+        isFullscreen = !!(
+          document.fullscreenElement ||
+          document.webkitFullscreenElement ||
+          document.msFullscreenElement
+        );
         fullscreenBtn.classList.toggle("fullscreen-active", isFullscreen);
         fullscreenBtn.textContent = isFullscreen ? "✕" : "🖥️";
 
@@ -1011,14 +1039,21 @@ async function initAppShell(appState) {
           if (window.MapContainer && window.MapContainer.resize) {
             window.MapContainer.resize();
           }
-          if (window._radarMap && window._radarMap.map && window._radarMap.map.invalidateSize) {
+          if (
+            window._radarMap &&
+            window._radarMap.map &&
+            window._radarMap.map.invalidateSize
+          ) {
             window._radarMap.map.invalidateSize();
           }
         }, 100);
       };
 
       document.addEventListener("fullscreenchange", handleFullscreenChange);
-      document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+      document.addEventListener(
+        "webkitfullscreenchange",
+        handleFullscreenChange
+      );
       document.addEventListener("msfullscreenchange", handleFullscreenChange);
     }
   } catch (e) {
@@ -3575,16 +3610,16 @@ async function loadWeather(city, options = {}) {
 
     // Dispatch location changed event for map components
     try {
-      const locationEvent = new CustomEvent('app:locationChanged', {
+      const locationEvent = new CustomEvent("app:locationChanged", {
         detail: {
           lat: location.lat,
           lon: location.lon,
-          label: location.city
-        }
+          label: location.city,
+        },
       });
       document.dispatchEvent(locationEvent);
     } catch (e) {
-      console.warn('Failed to dispatch location changed event:', e);
+      console.warn("Failed to dispatch location changed event:", e);
     }
 
     // Lade Wetterdaten
@@ -3838,16 +3873,16 @@ async function loadWeatherByCoords(lat, lon, cityName, options = {}) {
 
     // Dispatch location changed event for map components
     try {
-      const locationEvent = new CustomEvent('app:locationChanged', {
+      const locationEvent = new CustomEvent("app:locationChanged", {
         detail: {
           lat: location.lat,
           lon: location.lon,
-          label: location.city
-        }
+          label: location.city,
+        },
       });
       document.dispatchEvent(locationEvent);
     } catch (e) {
-      console.warn('Failed to dispatch location changed event:', e);
+      console.warn("Failed to dispatch location changed event:", e);
     }
 
     const weatherData = await fetchWeatherData(location.lat, location.lon);

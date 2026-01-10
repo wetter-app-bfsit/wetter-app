@@ -24,8 +24,8 @@ class MapComponent {
     this.anchorOffset = { x: 150, y: 200 };
 
     // Check if Leaflet is available
-    if (typeof L === 'undefined') {
-      console.warn('⚠️ Leaflet library not loaded. Map features unavailable.');
+    if (typeof L === "undefined") {
+      console.warn("⚠️ Leaflet library not loaded. Map features unavailable.");
       this.available = false;
     } else {
       this.available = true;
@@ -33,15 +33,24 @@ class MapComponent {
 
     // Listen for global location changes so the component recenters accordingly
     try {
-      document.addEventListener('app:locationChanged', (e) => {
+      document.addEventListener("app:locationChanged", (e) => {
         const d = e && e.detail ? e.detail : null;
-        if (d && typeof d.lat === 'number' && typeof d.lon === 'number') {
-          console.log('[MapComponent] received app:locationChanged', d.lat, d.lon, d.label);
+        if (d && typeof d.lat === "number" && typeof d.lon === "number") {
+          console.log(
+            "[MapComponent] received app:locationChanged",
+            d.lat,
+            d.lon,
+            d.label
+          );
           // If map instance exists, apply location immediately, otherwise queue it
-          if (this.map && typeof this.setLocation === 'function') {
-            this.setLocation(d.lat, d.lon, d.label || '');
+          if (this.map && typeof this.setLocation === "function") {
+            this.setLocation(d.lat, d.lon, d.label || "");
           } else {
-            this._pendingLocation = { lat: d.lat, lon: d.lon, label: d.label || '' };
+            this._pendingLocation = {
+              lat: d.lat,
+              lon: d.lon,
+              label: d.label || "",
+            };
           }
         }
       });
@@ -55,44 +64,228 @@ class MapComponent {
    * Should be called after Leaflet library is loaded
    */
   render() {
-  if (!this.available || !document.getElementById(this.containerId)) {
-    console.warn('Map container not found or Leaflet not available');
-    return this;
-  }
+    if (!this.available || !document.getElementById(this.containerId)) {
+      console.warn("Map container not found or Leaflet not available");
+      return this;
+    }
 
-  try {
-    // Initialize Leaflet map
-    this.map = L.map(this.containerId).setView([51.505, -0.09], 10);
-
-    // Add OpenStreetMap base layer
-    this.baseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
-      maxZoom: 19,
-    }).addTo(this.map);
-
-    // Add default weather overlay (precipitation) - this makes weather layers actually overlay the map
     try {
-      this.addWeatherOverlay('openweathermap', null, 'rain');
-    } catch (err) {
-      console.warn('Failed to add default weather overlay:', err);
-    }
-
-    // If there was a pending location to set, apply it now
-    if (this._pendingLocation) {
-      this.setLocation(
-        this._pendingLocation.lat,
-        this._pendingLocation.lon,
-        this._pendingLocation.label || '',
+      // Initialize Leaflet map
+      this.map = L.map(this.containerId, { zoomControl: false }).setView(
+        [51.505, -0.09],
+        10
       );
-      this._pendingLocation = null;
-    }
-      console.log('✅ Map initialized');
+
+      // Add OpenStreetMap base layer
+      this.baseLayer = L.tileLayer(
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
+          attribution: "&copy; OpenStreetMap contributors",
+          maxZoom: 19,
+        }
+      ).addTo(this.map);
+
+      // --- NEW: Map Interaction (Click/Tap handler for weather info) ---
+      // Fixes issue where user wants data when moving/tapping over map.
+      this.map.on("click", async (e) => {
+        const { lat, lng } = e.latlng;
+        // Show loading popup
+        const uniqueId = `popup-${Date.now()}`;
+        const popup = L.popup({ className: "weather-detail-popup" })
+          .setLatLng([lat, lng])
+          .setContent(
+            `
+            <div class="weather-popup-loading" id="${uniqueId}">
+              <div class="spinner"></div> Lade Wetterdaten...
+            </div>
+          `
+          )
+          .openOn(this.map);
+
+        try {
+          // Fetch data for this point. We'll use the existing API if possible or a direct fetch.
+          // Since we need "current location based correct weather data", let's use the weather service.
+          // Assuming WeatherDataService is global or we can fetch directly.
+
+          // Using BigDataCloud or OpenWeatherMap directly for point data
+          // FALLBACK: Use Open-Meteo as it is free and easy for point data if API key is an issue,
+          // but let's try to reuse app infrastructure if possible.
+
+          // Let's emulate a quick fetch using Open-Meteo for reliability in this specific view
+          // as it returns all the requested metrics (temp, humidity, visibility, rain, cover).
+          const response = await fetch(
+            `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,precipitation,rain,cloud_cover,visibility,wind_speed_10m,wind_direction_10m&wind_speed_unit=kmh`
+          );
+          const data = await response.json();
+          const current = data.current;
+
+          if (current) {
+            const content = `
+              <div class="weather-popup-content">
+                <div class="popup-header">
+                  <strong>Wetter an Position</strong>
+                </div>
+                <div class="popup-grid">
+                  <div class="popup-item">
+                    <span class="popup-label">Temp</span>
+                    <span class="popup-value">${current.temperature_2m}${
+              data.current_units.temperature_2m
+            }</span>
+                  </div>
+                  <div class="popup-item">
+                    <span class="popup-label">Wind</span>
+                    <span class="popup-value">${
+                      current.wind_speed_10m
+                    } <small>km/h</small> <span style="display:inline-block; transform: rotate(${
+              current.wind_direction_10m
+            }deg)">↓</span></span>
+                  </div>
+                  <div class="popup-item">
+                    <span class="popup-label">Regen</span>
+                    <span class="popup-value">${current.precipitation}${
+              data.current_units.precipitation
+            }</span>
+                  </div>
+                  <div class="popup-item">
+                    <span class="popup-label">Feuchtigkeit</span>
+                    <span class="popup-value">${current.relative_humidity_2m}${
+              data.current_units.relative_humidity_2m
+            }</span>
+                  </div>
+                  <div class="popup-item">
+                    <span class="popup-label">Wolken</span>
+                    <span class="popup-value">${current.cloud_cover}${
+              data.current_units.cloud_cover
+            }</span>
+                  </div>
+                  <div class="popup-item">
+                    <span class="popup-label">Sichtweite</span>
+                    <span class="popup-value">${(
+                      current.visibility / 1000
+                    ).toFixed(1)} km</span>
+                  </div>
+                </div>
+                <div class="popup-footer">
+                  <small>Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}</small>
+                </div>
+              </div>
+            `;
+            // Update popup content
+            // Leaflet doesn't have a simple updateContent on the opened popup instance easily if we just used openOn
+            // But we can just open a new one or bind.
+            L.popup({ className: "weather-detail-popup" })
+              .setLatLng([lat, lng])
+              .setContent(content)
+              .openOn(this.map);
+          }
+        } catch (err) {
+          console.error("Failed to fetch weather for point", err);
+          L.popup({ className: "weather-detail-popup" })
+            .setLatLng([lat, lng])
+            .setContent(
+              `<div class="weather-popup-error">Daten nicht verfügbar</div>`
+            )
+            .openOn(this.map);
+        }
+      });
+
+      // Add default weather overlay (precipitation) - this makes weather layers actually overlay the map
+      try {
+        this.addWeatherOverlay("openweathermap", null, "rain");
+      } catch (err) {
+        console.warn("Failed to add default weather overlay:", err);
+      }
+
+      // Initialize Legend Click Handlers (Make legend items interactive)
+      this._initLegendInteractivity();
+
+      // If there was a pending location to set, apply it now
+      if (this._pendingLocation) {
+        this.setLocation(
+          this._pendingLocation.lat,
+          this._pendingLocation.lon,
+          this._pendingLocation.label || ""
+        );
+        this._pendingLocation = null;
+      }
+      console.log("✅ Map initialized");
+      this._removePlaceholder();
     } catch (err) {
-      console.error('❌ Map initialization error:', err);
+      console.error("❌ Map initialization error:", err);
       this.available = false;
     }
 
     return this;
+  }
+
+  /**
+   * Make static HTML legend items interactive
+   */
+  _initLegendInteractivity() {
+    const legendItems = document.querySelectorAll(".radar-view__legend-item");
+    if (!legendItems.length) return;
+
+    console.log("[MapComponent] Initializing legend interactivity");
+
+    // Mapping from text content to layer key
+    const layerMap = {
+      regen: "rain",
+      schnee: "snow",
+      temp: "temp",
+      wind: "wind",
+      wolken: "clouds",
+    };
+
+    legendItems.forEach((item) => {
+      const text = item.textContent.trim().toLowerCase();
+      const layerType = layerMap[text];
+
+      if (layerType) {
+        item.style.cursor = "pointer";
+        item.title = `Layer ${text} umschalten`;
+
+        // Add active state visual logic if needed, but for now just toggle
+        item.addEventListener("click", () => {
+          // Check if active
+          const isActive =
+            this.overlays[layerType] &&
+            this.map.hasLayer(this.overlays[layerType]);
+
+          // Toggle off all others? Usually layers are exclusive or additive.
+          // OpenWeatherMap layers are tiles. They can stack but might look messy.
+          // Let's toggle THIS one.
+          this.toggleOverlay(layerType, !isActive);
+
+          // Optional: Visual feedback on the legend item
+          if (!isActive) {
+            item.classList.add("active-layer");
+            // Remove active class from others if we want exclusive behavior (optional)
+          } else {
+            item.classList.remove("active-layer");
+          }
+        });
+      }
+    });
+  }
+
+  _removePlaceholder() {
+    const container = document.getElementById(this.containerId);
+    if (container) {
+      const placeholder = container.querySelector(
+        ".radar-view__map-placeholder"
+      );
+      if (placeholder) {
+        placeholder.style.display = "none";
+      }
+    }
+  }
+
+  invalidate() {
+    if (this.map) {
+      setTimeout(() => {
+        this.map.invalidateSize();
+      }, 100);
+    }
   }
 
   /**
@@ -101,9 +294,9 @@ class MapComponent {
    * @param {number} longitude - Location longitude
    * @param {string} locationName - Location name for marker popup
    */
-  setLocation(latitude, longitude, locationName = 'Location') {
+  setLocation(latitude, longitude, locationName = "Location") {
     if (!this.map) {
-      console.warn('Map not initialized');
+      console.warn("Map not initialized");
       return this;
     }
 
@@ -112,13 +305,24 @@ class MapComponent {
       const lat = Number(latitude);
       const lon = Number(longitude);
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-        console.warn('Invalid coordinates for setLocation', latitude, longitude);
+        console.warn(
+          "Invalid coordinates for setLocation",
+          latitude,
+          longitude
+        );
         return this;
       }
 
       // Invalidate size first in case container changed (common in hidden tabs/layout shifts)
-      if (this.map.invalidateSize && typeof this.map.invalidateSize === 'function') {
-        try { this.map.invalidateSize(); } catch (e) { /* ignore */ }
+      if (
+        this.map.invalidateSize &&
+        typeof this.map.invalidateSize === "function"
+      ) {
+        try {
+          this.map.invalidateSize();
+        } catch (e) {
+          /* ignore */
+        }
       }
       // Remove previous marker if exists
       if (this.currentMarker) {
@@ -136,62 +340,105 @@ class MapComponent {
       }
 
       this.currentMarker = L.marker([lat, lon])
-        .bindPopup(`<strong>${locationName}</strong><br>Lat: ${lat.toFixed(4)}, Lng: ${lon.toFixed(4)}`)
+        .bindPopup(
+          `<strong>${locationName}</strong><br>Lat: ${lat.toFixed(
+            4
+          )}, Lng: ${lon.toFixed(4)}`
+        )
         .addTo(this.map);
 
-        this.map.setView([latitude, longitude], 10)
+      this.map.setView([latitude, longitude], 10);
 
       // Ensure container/layout is up-to-date then center the map.
       try {
-        if (this.map && typeof this.map.invalidateSize === 'function') {
-          try { this.map.invalidateSize(); } catch (e) { /* ignore */ }
+        if (this.map && typeof this.map.invalidateSize === "function") {
+          try {
+            this.map.invalidateSize();
+          } catch (e) {
+            /* ignore */
+          }
         }
 
         // Preserve current zoom if available
-        const currentZoom = (this.map && typeof this.map.getZoom === 'function') ? this.map.getZoom() : 10;
+        const currentZoom =
+          this.map && typeof this.map.getZoom === "function"
+            ? this.map.getZoom()
+            : 10;
 
         // Ensure map sizing and center once the map is ready
         try {
-          if (this.map && typeof this.map.whenReady === 'function') {
+          if (this.map && typeof this.map.whenReady === "function") {
             this.map.whenReady(() => {
-              try { if (this.map && typeof this.map.invalidateSize === 'function') this.map.invalidateSize(); } catch (e) { /* ignore */ }
               try {
-                if (this.map && typeof this.map.getSize === 'function' && this.anchorOffset) {
+                if (this.map && typeof this.map.invalidateSize === "function")
+                  this.map.invalidateSize();
+              } catch (e) {
+                /* ignore */
+              }
+              try {
+                if (
+                  this.map &&
+                  typeof this.map.getSize === "function" &&
+                  this.anchorOffset
+                ) {
                   const size = this.map.getSize();
                   const centerPoint = L.point(size.x / 2, size.y / 2);
-                  const desiredPoint = centerPoint.add(L.point(this.anchorOffset.x, this.anchorOffset.y));
-                  const newCenterLatLng = this.map.containerPointToLatLng(centerPoint.subtract(desiredPoint.subtract(centerPoint)));
-                  this.map.setView(newCenterLatLng, currentZoom, { animate: false });
-                } else if (this.map && typeof this.map.setView === 'function') {
+                  const desiredPoint = centerPoint.add(
+                    L.point(this.anchorOffset.x, this.anchorOffset.y)
+                  );
+                  const newCenterLatLng = this.map.containerPointToLatLng(
+                    centerPoint.subtract(desiredPoint.subtract(centerPoint))
+                  );
+                  this.map.setView(newCenterLatLng, currentZoom, {
+                    animate: false,
+                  });
+                } else if (this.map && typeof this.map.setView === "function") {
                   this.map.setView([lat, lon], currentZoom);
                 }
-              } catch (e) { /* ignore */ }
+              } catch (e) {
+                /* ignore */
+              }
             });
           } else {
-            try { if (this.map && typeof this.map.invalidateSize === 'function') this.map.invalidateSize(); } catch (e) { /* ignore */ }
             try {
-              if (this.map && typeof this.map.getSize === 'function' && this.anchorOffset) {
+              if (this.map && typeof this.map.invalidateSize === "function")
+                this.map.invalidateSize();
+            } catch (e) {
+              /* ignore */
+            }
+            try {
+              if (
+                this.map &&
+                typeof this.map.getSize === "function" &&
+                this.anchorOffset
+              ) {
                 // compute center such that marker at [lat,lon] appears at container center + anchorOffset
                 const size = this.map.getSize();
                 const centerPoint = L.point(size.x / 2, size.y / 2);
-                const desiredPoint = centerPoint.add(L.point(this.anchorOffset.x, this.anchorOffset.y));
-                const newCenterLatLng = this.map.containerPointToLatLng(centerPoint.subtract(desiredPoint.subtract(centerPoint)));
+                const desiredPoint = centerPoint.add(
+                  L.point(this.anchorOffset.x, this.anchorOffset.y)
+                );
+                const newCenterLatLng = this.map.containerPointToLatLng(
+                  centerPoint.subtract(desiredPoint.subtract(centerPoint))
+                );
                 this.map.setView(newCenterLatLng, 10, { animate: false });
-              } else if (this.map && typeof this.map.setView === 'function') {
+              } else if (this.map && typeof this.map.setView === "function") {
                 this.map.setView([lat, lon], 10);
               }
-            } catch (e) { /* ignore */ }
+            } catch (e) {
+              /* ignore */
+            }
           }
         } catch (err) {
-          console.warn('Error scheduling center (simple):', err);
+          console.warn("Error scheduling center (simple):", err);
         }
       } catch (err) {
-        console.warn('Error scheduling center:', err);
+        console.warn("Error scheduling center:", err);
       }
 
       console.log(`📍 Marker set for ${locationName} (${lat}, ${lon})`);
     } catch (err) {
-      console.error('❌ Error setting location marker:', err);
+      console.error("❌ Error setting location marker:", err);
     }
 
     return this;
@@ -203,48 +450,71 @@ class MapComponent {
    * @param {string} apiKey - Optional API key for OpenWeatherMap
    * @param {string} layerType - Type of layer: 'rain', 'snow', 'temp', 'wind', 'clouds', 'pressure'
    */
-  addWeatherOverlay(provider = 'openstreetmap', apiKey = null, layerType = 'clouds') {
+  addWeatherOverlay(
+    provider = "openstreetmap",
+    apiKey = null,
+    layerType = "clouds"
+  ) {
     if (!this.map) {
-      console.warn('Map not initialized');
+      console.warn("Map not initialized");
       return this;
     }
 
     try {
       let layerUrl, attribution;
 
-      if (provider === 'openweathermap') {
+      if (provider === "openweathermap") {
+        // Attempt to find a better key from storage if one isn't provided
+        if (!apiKey && typeof localStorage !== "undefined") {
+          const storedKey = localStorage.getItem("wetter_api_openweathermap");
+          if (storedKey) {
+            console.log(
+              "[MapComponent] Using stored OpenWeatherMap key for layer"
+            );
+            apiKey = storedKey;
+          }
+        }
+
         // OpenWeatherMap Layer URLs (mit API-Key wenn vorhanden, sonst Fallback)
+        // Fallback key might be rate limited or invalid.
+        const defaultKey = "8437e4b8d4acc41194a3cd3325c41233";
+
         const layerUrls = {
-          'rain': apiKey
+          rain: apiKey
             ? `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${apiKey}`
-            : `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=8437e4b8d4acc41194a3cd3325c41233`, // Demo-Key
-          'snow': apiKey
+            : `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${defaultKey}`,
+          snow: apiKey
             ? `https://tile.openweathermap.org/map/snow_new/{z}/{x}/{y}.png?appid=${apiKey}`
-            : `https://tile.openweathermap.org/map/snow_new/{z}/{x}/{y}.png?appid=8437e4b8d4acc41194a3cd3325c41233`,
-          'temp': apiKey
+            : `https://tile.openweathermap.org/map/snow_new/{z}/{x}/{y}.png?appid=${defaultKey}`,
+          temp: apiKey
             ? `https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${apiKey}`
-            : `https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=8437e4b8d4acc41194a3cd3325c41233`,
-          'wind': apiKey
+            : `https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${defaultKey}`,
+          wind: apiKey
             ? `https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${apiKey}`
-            : `https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=8437e4b8d4acc41194a3cd3325c41233`,
-          'clouds': apiKey
+            : `https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${defaultKey}`,
+          clouds: apiKey
             ? `https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${apiKey}`
-            : `https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=8437e4b8d4acc41194a3cd3325c41233`,
-          'pressure': apiKey
+            : `https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${defaultKey}`,
+          pressure: apiKey
             ? `https://tile.openweathermap.org/map/pressure_new/{z}/{x}/{y}.png?appid=${apiKey}`
-            : `https://tile.openweathermap.org/map/pressure_new/{z}/{x}/{y}.png?appid=8437e4b8d4acc41194a3cd3325c41233`,
+            : `https://tile.openweathermap.org/map/pressure_new/{z}/{x}/{y}.png?appid=${defaultKey}`,
         };
 
-        layerUrl = layerUrls[layerType] || layerUrls['clouds'];
+        layerUrl = layerUrls[layerType] || layerUrls["clouds"];
         attribution = `© OpenWeatherMap (${layerType})`;
 
-        console.log('[MapComponent] Adding OpenWeatherMap overlay:', layerType, 'URL:', layerUrl.substring(0, 80) + '...');
-      } else if (provider === 'weather-radar') {
+        console.log(
+          "[MapComponent] Adding OpenWeatherMap overlay:",
+          layerType,
+          "URL:",
+          layerUrl.substring(0, 80) + "..."
+        );
+      } else if (provider === "weather-radar") {
         layerUrl = `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=8437e4b8d4acc41194a3cd3325c41233`;
-        attribution = '© OpenWeatherMap Precipitation';
-        layerType = 'radar'; // Use consistent key for weather-radar
+        attribution = "© OpenWeatherMap Precipitation";
+        layerType = "radar"; // Use consistent key for weather-radar
       } else {
-        console.log('ℹ️ OpenStreetMap is already the base layer');
+        console.log("ℹ️ OpenStreetMap is already the base layer");
         return this;
       }
 
@@ -257,14 +527,18 @@ class MapComponent {
       // Overlay Layer hinzufügen (höhere Deckkraft für bessere Sichtbarkeit)
       const overlayLayer = L.tileLayer(layerUrl, {
         attribution,
-        opacity: 0.8, // Increased from 0.6 for better visibility
+        opacity: 1.0, // Maximum visibility
         maxZoom: 18,
       }).addTo(this.map);
 
       // Store the overlay for future management
       this.overlays[layerType] = overlayLayer;
 
-      console.log(`✅ Weather overlay added: ${provider} (${layerType})`);
+      console.log(
+        `✅ Weather overlay added: ${provider} (${layerType}) using key: ${
+          apiKey ? "Custom" : "Default"
+        }`
+      );
     } catch (err) {
       console.error(`❌ Error adding weather overlay (${provider}):`, err);
     }
@@ -281,25 +555,30 @@ class MapComponent {
    */
   addFavoriteMarker(latitude, longitude, name, id) {
     if (!this.map) {
-      console.warn('Map not initialized');
+      console.warn("Map not initialized");
       return this;
     }
 
     try {
       const marker = L.marker([latitude, longitude], {
         icon: L.icon({
-          iconUrl: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23FFD700"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>',
+          iconUrl:
+            'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23FFD700"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>',
           iconSize: [32, 32],
           popupAnchor: [0, -16],
         }),
       })
-        .bindPopup(`<strong>⭐ ${name}</strong><br>Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)}`)
+        .bindPopup(
+          `<strong>⭐ ${name}</strong><br>Lat: ${latitude.toFixed(
+            4
+          )}, Lng: ${longitude.toFixed(4)}`
+        )
         .addTo(this.map);
 
       this.markers[id] = marker;
       console.log(`✅ Favorite marker added: ${name}`);
     } catch (err) {
-      console.error('❌ Error adding favorite marker:', err);
+      console.error("❌ Error adding favorite marker:", err);
     }
 
     return this;
@@ -326,14 +605,16 @@ class MapComponent {
    */
   toggleOverlay(layerType, visible) {
     if (!this.map) {
-      console.warn('Map not initialized');
+      console.warn("Map not initialized");
       return this;
     }
 
     if (visible) {
       // If we want to show it but it doesn't exist, we need to add it
       if (!this.overlays[layerType]) {
-        console.warn(`Overlay ${layerType} not found. Use addWeatherOverlay first.`);
+        console.log(`Layer ${layerType} not found in overlays, creating it...`);
+        // Default to openweathermap with demo key (handled by default param in addWeatherOverlay)
+        this.addWeatherOverlay("openweathermap", null, layerType);
         return this;
       }
       // Add it back to the map if it's not already there
@@ -343,7 +624,10 @@ class MapComponent {
       }
     } else {
       // Hide the overlay
-      if (this.overlays[layerType] && this.map.hasLayer(this.overlays[layerType])) {
+      if (
+        this.overlays[layerType] &&
+        this.map.hasLayer(this.overlays[layerType])
+      ) {
         this.map.removeLayer(this.overlays[layerType]);
         console.log(`✅ Overlay ${layerType} hidden`);
       }
@@ -356,56 +640,88 @@ class MapComponent {
    * Show a simple layer selector UI
    */
   showLayerSelector() {
-    // Remove existing selector if present
+    // Toggle check: if already open, close it and return
+    const existing = document.getElementById("map-layer-selector");
+    if (existing) {
+      this.hideLayerSelector();
+      return this;
+    }
+
+    // Remove existing selector if present (safety)
     this.hideLayerSelector();
 
-    const selector = document.createElement('div');
-    selector.id = 'map-layer-selector';
+    const selector = document.createElement("div");
+    selector.id = "map-layer-selector";
+    selector.className = "map-layer-menu";
     selector.innerHTML = `
-      <div style="position: absolute; top: 50px; right: 10px; background: rgba(10, 16, 32, 0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 12px; z-index: 1001; box-shadow: 0 4px 20px rgba(0,0,0,0.3); min-width: 180px;">
-        <h4 style="margin: 0 0 12px 0; font-size: 14px; color: #fff; font-weight: 600;">Weather Layers</h4>
-        <div style="display: flex; flex-direction: column; gap: 8px;">
-          <label style="display: flex; align-items: center; font-size: 13px; color: #e0e0e0; cursor: pointer;">
-            <input type="checkbox" data-layer="rain" checked style="margin-right: 8px;"> Rain
-          </label>
-          <label style="display: flex; align-items: center; font-size: 13px; color: #e0e0e0; cursor: pointer;">
-            <input type="checkbox" data-layer="clouds" style="margin-right: 8px;"> Clouds
-          </label>
-          <label style="display: flex; align-items: center; font-size: 13px; color: #e0e0e0; cursor: pointer;">
-            <input type="checkbox" data-layer="temp" style="margin-right: 8px;"> Temperature
-          </label>
-          <label style="display: flex; align-items: center; font-size: 13px; color: #e0e0e0; cursor: pointer;">
-            <input type="checkbox" data-layer="wind" style="margin-right: 8px;"> Wind
-          </label>
-          <label style="display: flex; align-items: center; font-size: 13px; color: #e0e0e0; cursor: pointer;">
-            <input type="checkbox" data-layer="pressure" style="margin-right: 8px;"> Pressure
-          </label>
-        </div>
+      <div class="map-layer-menu-header">
+        <span class="map-layer-menu-title">Wetter Layers</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <label class="map-layer-item">
+          <input type="checkbox" data-layer="rain">
+          <div class="map-layer-checkbox"></div>
+          <span class="map-layer-label">Regen</span>
+        </label>
+        <label class="map-layer-item">
+          <input type="checkbox" data-layer="clouds">
+          <div class="map-layer-checkbox"></div>
+          <span class="map-layer-label">Wolken</span>
+        </label>
+        <label class="map-layer-item">
+          <input type="checkbox" data-layer="temp">
+          <div class="map-layer-checkbox"></div>
+          <span class="map-layer-label">Temperatur</span>
+        </label>
+        <label class="map-layer-item">
+          <input type="checkbox" data-layer="wind">
+          <div class="map-layer-checkbox"></div>
+          <span class="map-layer-label">Wind</span>
+        </label>
+        <label class="map-layer-item">
+          <input type="checkbox" data-layer="pressure">
+          <div class="map-layer-checkbox"></div>
+          <span class="map-layer-label">Luftdruck</span>
+        </label>
       </div>
     `;
 
     // Add event listeners
-    selector.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-      checkbox.addEventListener('change', (e) => {
+    selector.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
+      // Set initial state
+      const layerType = checkbox.dataset.layer;
+      // Check if this layer is currently in the overlays object and on the map
+      const isVisible =
+        this.overlays[layerType] && this.map.hasLayer(this.overlays[layerType]);
+      checkbox.checked = !!isVisible;
+
+      checkbox.addEventListener("change", (e) => {
         const layerType = e.target.dataset.layer;
         this.toggleOverlay(layerType, e.target.checked);
       });
     });
 
     // Add to map wrapper instead of map container for better layering
-    const wrapper = document.querySelector('.radar-view__map-wrapper');
+    const wrapper = document.querySelector(".radar-view__map-wrapper");
     if (wrapper) {
-      wrapper.style.position = 'relative';
+      // wrapper.style.position = "relative"; // Already in CSS
       wrapper.appendChild(selector);
     }
 
     // Close on click outside
     setTimeout(() => {
-      document.addEventListener('click', (e) => {
-        if (!selector.contains(e.target) && !e.target.closest('#map-layer-toggle')) {
+      const closeHandler = (e) => {
+        const el = document.getElementById("map-layer-selector");
+        if (
+          el &&
+          !el.contains(e.target) &&
+          !e.target.closest("#map-layer-toggle")
+        ) {
           this.hideLayerSelector();
+          document.removeEventListener("click", closeHandler);
         }
-      });
+      };
+      document.addEventListener("click", closeHandler);
     }, 100);
 
     return this;
@@ -415,7 +731,7 @@ class MapComponent {
    * Hide the layer selector UI
    */
   hideLayerSelector() {
-    const selector = document.getElementById('map-layer-selector');
+    const selector = document.getElementById("map-layer-selector");
     if (selector) {
       selector.remove();
     }
@@ -442,13 +758,13 @@ class MapComponent {
    * Remove all weather overlays
    */
   clearOverlays() {
-    Object.keys(this.overlays).forEach(layerType => {
+    Object.keys(this.overlays).forEach((layerType) => {
       if (this.map && this.map.hasLayer(this.overlays[layerType])) {
         this.map.removeLayer(this.overlays[layerType]);
       }
       delete this.overlays[layerType];
     });
-    console.log('✅ All overlays cleared');
+    console.log("✅ All overlays cleared");
 
     return this;
   }
@@ -457,11 +773,11 @@ class MapComponent {
    * Clear all markers except current location
    */
   clearMarkers() {
-    Object.keys(this.markers).forEach(id => {
+    Object.keys(this.markers).forEach((id) => {
       this.map.removeLayer(this.markers[id]);
       delete this.markers[id];
     });
-    console.log('✅ Markers cleared');
+    console.log("✅ Markers cleared");
 
     return this;
   }
@@ -475,7 +791,7 @@ class MapComponent {
       this.map = null;
       this.markers = {};
       this.overlays = {};
-      console.log('✅ Map destroyed');
+      console.log("✅ Map destroyed");
     }
 
     return this;
@@ -511,6 +827,6 @@ class MapComponent {
 window.MapComponent = MapComponent;
 
 // Export for use in app
-if (typeof module !== 'undefined' && module.exports) {
+if (typeof module !== "undefined" && module.exports) {
   module.exports = MapComponent;
 }

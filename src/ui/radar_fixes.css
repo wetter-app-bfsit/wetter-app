@@ -1,0 +1,476 @@
+/* Re-add missing swarm definitions for radar-view legend */
+.radar-view__legend-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+}
+
+.radar-view__legend-swatch--rain {
+  background: linear-gradient(90deg, #4fc3f7, #0288d1);
+}
+
+.radar-view__legend-swatch--snow {
+  background: linear-gradient(90deg, #e0f7fa, #b3e5fc);
+}
+
+.radar-view__legend-swatch--temp {
+  background: linear-gradient(90deg, #4fc3f7, #ff7043);
+}
+
+.radar-view__legend-swatch--wind {
+  background: linear-gradient(90deg, #80cbc4, #004d40);
+}
+
+.radar-view__legend-swatch--clouds {
+  background: linear-gradient(90deg, #cfd8dc, #90a4ae);
+}
+
+/* Updated Layer Button Style */
+.radar-view__layer-btn {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px;
+  padding: 0 !important;
+  background: rgba(10, 16, 32, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: all 0.15s ease;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.radar-view__layer-btn span:not(.material-symbols-outlined) {
+  display: none !important;
+}
+
+.radar-view__layer-btn .material-symbols-outlined {
+  font-size: 24px;
+  color: #e0e0e0;
+  margin: 0 !important;
+}
+
+.radar-view__layer-btn:hover,
+.radar-view__layer-btn:active {
+  background: rgba(30, 41, 59, 0.95);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* FIX: Map Height extends to bottom */
+.radar-view {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw !important;
+  height: 100vh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 1; /* Below UI but above basic content */
+}
+
+.radar-view__map-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+/* Fix: Move top controls down to avoid notch/rounded corners */
+.radar-view__top-controls {
+  position: absolute;
+  top: max(50px, env(safe-area-inset-top) + 20px); /* Pushes down further for smartphone notch */
+  left: 16px;
+  right: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  pointer-events: none; /* Let clicks pass through empty areas */
+  z-index: 500;
+}
+
+/* Ensure children are clickable */
+.radar-view__top-controls > * {
+  pointer-events: auto;
+}
+
+/* FIX: Timeline Controls Size & Usability - Pill Shape */
+.radar-view__bottom-overlay {
+  position: absolute;
+  bottom: calc(85px + env(safe-area-inset-bottom)); /* Increased base offset to clear bottom nav */
+  left: 0;
+  right: 0;
+  padding: 0;
+  z-index: 500;
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+  background: none;
+}
+
+.radar-view__timeline {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+
+  /* Pill Shape */
+  border-radius: 100px;
+  padding: 6px 16px;
+  margin-bottom: 0;
+
+  /* Size & Positioning */
+  width: auto;
+  max-width: 90%;
+  min-width: 280px;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  pointer-events: auto;
+}
+
+.radar-view__timeline-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Tighter controls */
+  flex-shrink: 0;
+}
+
+.radar-view__timeline-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05); /* Subtle bg */
+  border: 1px solid transparent; /* Cleaner border */
+  color: #e0e0e0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.radar-view__timeline-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.radar-view__timeline-btn--primary {
+  background: #4c6fff !important;
+  color: #fff !important;
+  box-shadow: 0 4px 12px rgba(76, 111, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.radar-view__timeline-btn .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.radar-view__timeline-slider-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 4px;
+}
+
+.radar-view__timeline-slider {
+  width: 100%;
+  height: 4px; /* Thinner line */
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.radar-view__timeline-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px; /* Daintier thumb */
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+  box-shadow: 0 0 0 2px rgba(10, 16, 32, 0.5); /* Contrast ring */
+}
+
+.radar-view__timeline-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  min-width: 32px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.radar-view__control-divider-vertical {
+  width: 1px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 2px;
+}
+
+/* Layer Menu Modern Styles */
+.map-layer-menu {
+  position: absolute;
+  top: 70px;
+  right: 16px;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  width: 220px;
+  z-index: 2000;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  padding: 8px;
+  overflow: hidden;
+  animation: menuFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: top right;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+@keyframes menuFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.map-layer-menu-header {
+  padding: 8px 12px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.map-layer-menu-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.map-layer-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #b0b8c4;
+  user-select: none;
+  background: transparent;
+}
+
+.map-layer-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+/* Custom Checkbox Design */
+.map-layer-checkbox {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.map-layer-checkbox::after {
+  content: "check";
+  font-family: "Material Symbols Outlined";
+  font-size: 14px;
+  color: white;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.map-layer-item input[type="checkbox"] {
+  display: none;
+}
+
+.map-layer-item input[type="checkbox"]:checked + .map-layer-checkbox {
+  background: #4c6fff;
+  border-color: #4c6fff;
+  box-shadow: 0 2px 8px rgba(76, 111, 255, 0.4);
+}
+
+.map-layer-item input[type="checkbox"]:checked + .map-layer-checkbox::after {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.map-layer-label {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  margin-left: 12px;
+}
+
+/* Mobile Optimization for Timeline logic */
+@media (max-width: 480px) {
+  .radar-view__timeline {
+    width: 96% !important;
+    max-width: 96% !important;
+    min-width: unset !important;
+    padding: 8px 10px !important;
+    gap: 6px !important;
+    margin-bottom: 4px;
+    /* Slightly less rounded on mobile to save vertical space if needed, keeping pill for now */
+  }
+
+  .radar-view__timeline-controls {
+    gap: 4px !important;
+  }
+
+  .radar-view__timeline-btn {
+    width: 32px; /* Touch target still decent */
+    height: 32px;
+  }
+
+  .radar-view__timeline-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0; /* Allow shrinking */
+    max-width: 80px; /* Force constraint */
+    text-align: right;
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+
+  /* Hide the vertical divider on very small screens to save space */
+  .radar-view__control-divider-vertical {
+    display: none;
+}
+/* Weather Popup Styles */
+.weather-detail-popup .leaflet-popup-content-wrapper {
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #fff;
+  padding: 0;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+
+.weather-detail-popup .leaflet-popup-tip {
+  background: rgba(15, 23, 42, 0.95);
+}
+
+.weather-detail-popup .leaflet-popup-content {
+  margin: 0;
+  width: 200px !important;
+}
+
+.weather-popup-content {
+  padding: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.popup-header {
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #a7b6c5;
+}
+
+.popup-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.popup-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.popup-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 2px;
+}
+
+.popup-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.popup-footer {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  text-align: right;
+  opacity: 0.5;
+  font-size: 10px;
+}
+
+.weather-popup-loading {
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #aaa;
+}
+
+/* Interactive Legend Styles */
+.radar-view__legend-item {
+  transition: all 0.2s ease;
+  padding: 2px 6px;
+  border-radius: 12px;
+}
+
+.radar-view__legend-item:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.radar-view__legend-item.active-layer {
+  background: rgba(255,255,255,0.2);
+  font-weight: 700;
+  box-shadow: 0 0 8px rgba(0,0,0,0.2);
+}
